@@ -60,7 +60,7 @@ region = [int64(str2double(fieldFrom.String)), ...
 if any(~isfinite(region) | region == 0)
     errordlg(sprintf(['expecting [from] and [to] to be signed integers. \n', ...
                       '>= 1 coordinates measured from START. \n', ...
-                      '<= -1 coordinates measured from STOP.']));
+                      '<= -1 coordinates measured from STOP.']), 'regions', 'modal');
     err = 1;
     return
 end
@@ -71,21 +71,21 @@ else
 end
 
 if any(region < 0) && ~isfinite(L)
-    errordlg('negative coordinates are undefined when target protein is unknown.')
+    errordlg('negative coordinates are undefined when target protein is unknown.', 'regions', 'modal')
     err = 3;
     return
 end
 region(region < 0) = L + 1 + region(region < 0);
 
 if region(1) > region(2)
-    errordlg('expecting [to] >= [from].');
+    errordlg('expecting [to] >= [from].', 'regions', 'modal');
     err = 2;
     return
 end
 
-if ~isfinite(L) && any(region > L)
-    errordlg(sprint('new region exceeds target protein length (%d > %d).', ...
-                    region(find(region > L, 1)), L))
+if isfinite(L) && any(region > L)
+    errordlg(sprintf('new region exceeds target protein length (%d > %d).', ...
+                     region(find(region > L, 1)), L), 'regions', 'modal');
     err = 4;
     return
 end
@@ -163,7 +163,12 @@ if handles.target_exist
 else
     L = max([chim_region, codon_region]);
 end
+chim_region = chim_region(1 <= chim_region & chim_region <= L);
+codon_region = codon_region(1 <= codon_region & codon_region <= L);
+
 handles.default_regions = set2region(setdiff(setdiff(1:L, chim_region), codon_region));
+handles.chimera_regions = set2region(chim_region);
+handles.codon_regions = set2region(codon_region);
 
 [handles.listChimera.String, handles.listChimera.Value] = update_listbox(...
 	handles.chimera_regions, handles.target_seq, handles.fieldChimeraFrom, handles.fieldChimeraTo);
@@ -339,6 +344,8 @@ function chimeraGUI_OpeningFcn(hObject, eventdata, handles, varargin)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to chimeraGUI (see VARARGIN)
+addpath('../');
+addpath('../pos-spec/');
 
 handles.axPreview.Box = 'on';
 
@@ -431,7 +438,7 @@ end
 
 err = check_region(new_reg, handles.chimera_regions);
 if err == 2
-    errordlg('new region already exists');
+    errordlg('new region already exists', 'chimera regions', 'modal');
     return
 elseif err == 1
     decision = questdlg('new region overlaps with an existing Chimera region' , ...
@@ -465,6 +472,73 @@ function butRun_Callback(hObject, eventdata, handles)
 % hObject    handle to butRun (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% 0. select output file
+% TODO
+
+% 1. codons optimization
+handles.statRun.String = 'codons optim'; guidata(hObject, handles);
+
+if handles.optSourceRef.Value
+    codon_seq = maximize_CUB(handles.target_seq, handles.reference_seq);
+elseif handles.optSourceTable.Value && isempty(handles.CUB)
+    errordlg('missing a codon table', 'codon optimization', 'modal');
+    return
+else
+    codon_seq = maximize_CUB(handles.target_seq, handles.CUB);
+end
+
+% 2. chimera optimization
+if ~handles.SA_exist
+    handles.statRun.String = 'building index'; guidata(hObject, handles);
+
+    handles.reference_aa = nt2aa(handles.reference_seq, 'AlternativeStartCodon', false);  % here false is good
+    lens = cellfun(@length, handles.reference_aa);
+    handles.SA = build_suffix_array(handles.reference_aa, false);
+    handles.SA(:, 3) = handles.SA(:, 1) - lens(handles.SA(:, 2)) - 1;  % equals -1 at end of seq
+    handles.SA_exist = true;
+end
+handles.statRun.String = 'chimera optim'; guidata(hObject, handles);
+
+if handles.winParams.size >= length(handles.target_seq)
+    % not position specific
+    warndlg('window size is larger than target sequence. that is, optimization is not position specific.');
+    [chimera_seq, blocks] = calc_map(handles.target_seq, handles.SA, ...
+                                     handles.reference_aa, handles.reference_seq);
+else
+    [chimera_seq, blocks] = calc_cmap_posspec1(handles.target_seq, handles.SA, ...
+                                               handles.reference_aa, handles.reference_seq, ...
+                                               handles.winParams);
+end
+blocks = table(blocks(:, 1), blocks(:, 2), blocks(:, 3), 'VariableNames', {'gene', 'pos', 'block'});
+writetable(blocks, '../../output.csv')
+
+
+% 3. complete construct from regions
+handles.statRun.String = 'combining regions'; guidata(hObject, handles);
+
+codon_region = region2set(handles.codon_regions);
+chim_region = region2set(handles.chimera_regions);
+def_region = region2set(handles.default_regions);
+assert(isempty(intersect(codon_region, chim_region)) && ...
+       isempty(intersect(codon_region, def_region)) && ...
+       isempty(intersect(chim_region, def_region)), 'overlapping regions')
+
+seq_bank = {codon_seq, chimera_seq, handles.default_seq};
+seq_source(codon_region) = 1;
+seq_source(chim_region) = 2;
+seq_source(def_region) = 3;
+final_seq = cellcat(arrayfun(@(x, y) {seq_bank{x}(3*(y-1)+1:3*y)}, seq_source, 1:length(seq_source)), 2);
+assert(strcmp(nt2aa(final_seq, 'AlternativeStartCodons', false), handles.target_seq), 'final seq error');
+
+outfile = '../../output.fasta';
+if exist(outfile, 'file')
+    delete(outfile);
+end
+fastawrite(outfile, sprintf('%s optimized by chimeraDesigner', handles.target_name), final_seq);
+
+handles.statRun.String = 'done';
+guidata(hObject, handles);
 
 
 function fileTarget_Callback(hObject, eventdata, handles)
@@ -517,7 +591,7 @@ function butTarget_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 [fname, dirname] = uigetfile({'*.fa;*.fasta', 'fasta file'}, 'select a protein sequence file');
 if fname == 0
-    errordlg('missing file');
+    errordlg('missing file', 'target seq', 'modal');
     return
 end
 seqs = fastaread(fullfile(dirname, fname));
@@ -534,7 +608,7 @@ end
 aa_alphabet = '*ACDEFGHIKLMNPQRSTVWY';
 valid = ismember(upper(seqs.Sequence), aa_alphabet);
 if ~all(valid)
-    errordlg(sprintf('protein sequence contains illegal chars ("%s"). \nexpecting an amino acid sequence.', unique(seqs.Sequence(~valid))));
+    errordlg(sprintf('protein sequence contains illegal chars ("%s"). \nexpecting an amino acid sequence.', unique(seqs.Sequence(~valid))), 'target seq', 'modal');
     return
 end
 nt_alphabet = 'ACGTU';
@@ -562,7 +636,7 @@ if ~ismember(upper(eventdata.Character), alphabet)
     if any(ismember(eventdata.Modifier, {'control'}));
         return
     end
-    errordlg(sprintf('expecting a sequence with alphabet: %s', alphabet));
+    errordlg(sprintf('expecting a sequence with alphabet: %s', alphabet), 'sequence error', 'modal');
     return
 end
 
@@ -596,7 +670,7 @@ function butReference_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 [fname, dirname] = uigetfile({'*.fa;*.fasta', 'fasta file'}, 'select a reference sequence file');
 if fname == 0
-    errordlg('missing file');
+    errordlg('missing file', 'reference seq', 'modal');
     return
 end
 seqs = fastaread(fullfile(dirname, fname));
@@ -607,7 +681,7 @@ valid_len = true(length(seqs), 1);
 for i = 1:length(seqs)
     valid_seq(i) = all(ismember(upper(seqs(i).Sequence), nt_alphabet));
     valid_len(i) = mod(length(seqs(i).Sequence), 3) == 0;
-    seqs(i).Sequence = strrep(upper(seqs(i).Sequence), 'T', 'U');
+    seqs(i).Sequence = strrep(upper(seqs(i).Sequence), 'U', 'T');
 end
 
 if ~all(valid_seq)
@@ -621,6 +695,7 @@ valid_len = valid_len(valid_seq);
 if ~all(valid_len)
     [sel, decision] = listdlg('ListString', {seqs(~valid_len).Header}, ...
                               'Name', 'invalid length', 'ListSize', [450, 300], ...
+                              'InitialValue', 1:sum(~valid_len), ...
                               'OKString', 'discard selected', 'CancelString', 'ignore warning', ...
                               'PromptString', 'the following seqs have lengths not divisible by 3.');
     if decision == 1  % 'discard selected'
@@ -630,8 +705,10 @@ end
 
 handles.fileReference.String = sprintf('%s: %d seqs', fname, length(seqs));
 handles.reference_seq = {seqs.Sequence}';
+handles.SA = zeros(0, 3);
 
 handles.reference_exist = true;
+handles.SA_exist = false;
 
 update_figure(hObject, handles);
 
@@ -684,7 +761,7 @@ end
 
 [err, ~, ~, handles.chimera_regions] = check_region(new_reg, handles.chimera_regions);
 if err == 0
-    errordlg('region does not exist');
+    errordlg('region does not exist', 'chimera regions', 'modal');
     return
 end
 
@@ -809,7 +886,7 @@ function butDefault_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 [fname, dirname] = uigetfile({'*.fa;*.fasta', 'fasta file'}, 'select a default sequence file');
 if fname == 0
-    errordlg('missing file');
+    errordlg('missing file', 'default seq', 'modal');
     return
 end
 seqs = fastaread(fullfile(dirname, fname));
@@ -826,7 +903,7 @@ end
 nt_alphabet = 'ACGTU';
 valid = ismember(upper(seqs.Sequence), nt_alphabet);
 if ~all(valid)
-    errordlg(sprintf('default sequence contains illegal chars ("%s"). \nexpecting a nucleotide sequence.', unique(seqs.Sequence(~valid))));
+    errordlg(sprintf('default sequence contains illegal chars ("%s"). \nexpecting a nucleotide sequence.', unique(seqs.Sequence(~valid))), 'default seq', 'modal');
     return
 end
 
@@ -890,7 +967,7 @@ end
 
 err = check_region(new_reg, handles.codon_regions);
 if err == 2
-    errordlg('new region already exists');
+    errordlg('new region already exists', 'codon regions', 'modal');
     return
 elseif err == 1
     decision = questdlg('new region overlaps with an existing codon region' , ...
@@ -932,7 +1009,7 @@ end
 
 [err, ~, ~, handles.codon_regions] = check_region(new_reg, handles.codon_regions);
 if err == 0
-    errordlg('region does not exist');
+    errordlg('region does not exist', 'codon regions', 'modal');
     return
 end
 
@@ -1079,7 +1156,7 @@ function optSourceTable_Callback(hObject, eventdata, handles)
 % Hint: get(hObject,'Value') returns toggle state of optSourceTable
 [fname, dirname] = uigetfile({'*.tsv;*.tab', 'tab separated values'}, 'select a codon score table');
 if fname == 0
-    errordlg('missing file');
+    errordlg('missing file', 'codon table', 'modal');
     handles.optSourceRef.Value = 1;
     handles.optSourceTable.Value = 0;
     handles.CUB = [];
@@ -1100,7 +1177,7 @@ end
 fclose(fid);
 
 if ~file_OK
-    errordlg('codon table format error. expecting a tab-separated file with 2 columns (and no header): [codon, score]');
+    errordlg('codon table format error. expecting a tab-separated file with 2 columns (and no header): [codon, score]', 'codon table', 'modal');
     handles.optSourceRef.Value = 1;
     handles.optSourceTable.Value = 0;
     handles.CUB = [];
@@ -1109,7 +1186,7 @@ if ~file_OK
 end
 
 if ~all(aa_OK)
-    errordlg(sprintf('the following AA are missing from table: %s', char(aa_list(~aa_OK))'));
+    errordlg(sprintf('the following AA are missing from table: %s', char(aa_list(~aa_OK))'), 'codon table', 'modal');
     handles.optSourceRef.Value = 1;
     handles.optSourceTable.Value = 0;
     handles.CUB = [];
