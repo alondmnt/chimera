@@ -22,7 +22,7 @@ function varargout = chimeraGUI(varargin)
 
 % Edit the above text to modify the response to help chimeraGUI
 
-% Last Modified by GUIDE v2.5 16-Jan-2018 17:12:38
+% Last Modified by GUIDE v2.5 21-Jan-2018 21:13:49
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -45,7 +45,15 @@ end
 
 
 % --- All my functions are here --- %
-function [region, err] = get_region(fieldFrom, fieldTo, L)
+function update_figure(hObject, handles)
+handles = update_regions(handles);
+handles = update_bar(handles);
+handles = update_chimera(handles);
+handles = update_status(handles);
+guidata(hObject, handles);
+
+
+function [region, err] = get_region(fieldFrom, fieldTo, target)
 err = 0;
 region = [int64(str2double(fieldFrom.String)), ...
           int64(str2double(fieldTo.String))];
@@ -55,6 +63,11 @@ if any(~isfinite(region) | region == 0)
                       '<= -1 coordinates measured from STOP.']));
     err = 1;
     return
+end
+if isempty(target)
+    L = NaN;
+else
+    L = length(target);
 end
 
 if any(region < 0) && ~isfinite(L)
@@ -139,37 +152,28 @@ ireg = [0, find(diff(set) > 1), length(set)];
 region = cellcat(arrayfun(@(x, y) {[set(x+1), set(y)]}, ireg(1:end-1), ireg(2:end)), 1);
 
 
-function update_regions(hObject, handles)
+function handles = update_regions(handles)
 % update all list boxes and barplot.
 chim_region = region2set(handles.chimera_regions);
 codon_region = region2set(handles.codon_regions);
 assert(isempty(intersect(chim_region, codon_region)), 'codon/chimera overlap');
 
-if isfinite(handles.target_len)
-    L = handles.target_len;
+if handles.target_exist
+    L = length(handles.target_seq);
 else
     L = max([chim_region, codon_region]);
 end
 handles.default_regions = set2region(setdiff(setdiff(1:L, chim_region), codon_region));
-if ~handles.default_exist && ~isempty(handles.default_regions)
-    handles.statDefault.String = 'required';
-elseif ~handles.default_exist
-    handles.statDefault.String = 'optional';
-end
 
 [handles.listChimera.String, handles.listChimera.Value] = update_listbox(...
-	handles.chimera_regions, handles.target_len, handles.fieldChimeraFrom, handles.fieldChimeraTo);
+	handles.chimera_regions, handles.target_seq, handles.fieldChimeraFrom, handles.fieldChimeraTo);
 [handles.listCodon.String, handles.listCodon.Value] = update_listbox(...
-    handles.codon_regions, handles.target_len, handles.fieldCodonFrom, handles.fieldCodonTo);
-handles.listDefault.Value = min(handles.listDefault.Value, size(handles.default_regions, 1));
-handles.listDefault.String = update_listbox(handles.default_regions, handles.target_len);
-
-update_bar(handles);
-
-guidata(hObject, handles);
+    handles.codon_regions, handles.target_seq, handles.fieldCodonFrom, handles.fieldCodonTo);
+handles.listDefault.Value = min(max(1, handles.listDefault.Value), size(handles.default_regions, 1));
+handles.listDefault.String = update_listbox(handles.default_regions, handles.target_seq);
 
 
-function [String, Value] = update_listbox(regions, L, fieldFrom, fieldTo)
+function [String, Value] = update_listbox(regions, target, fieldFrom, fieldTo)
 if isempty(regions)
     String = '';
     Value = [];
@@ -184,7 +188,7 @@ if nargout == 1
 end
 
 try
-    reg = get_region(fieldFrom, fieldTo, L);
+    reg = get_region(fieldFrom, fieldTo, target);
 catch
     Value = [];
     return
@@ -192,25 +196,30 @@ end
 Value = [find(regions(:, 1) == reg(:, 1)); find(regions(:, 2) == reg(:, 2))];
 
 
-function update_bar(handles)
+function handles = update_bar(handles)
 regions = {handles.chimera_regions, handles.codon_regions, handles.default_regions};
 lens = cumsum(cellfun(@(x) size(x, 1), regions));
 
 [regions, categ] = sortrows(cellcat(regions, 1));
 regions = diff(regions, 1, 2) + 1;
 
-categ(categ <= lens(1)) = 1;
-categ(lens(1) < categ & categ <= lens(2)) = 2;
-categ(lens(2) < categ & categ <= lens(3)) = 3;
+ind = [categ <= lens(1), lens(1) < categ & categ <= lens(2), lens(2) < categ & categ <= lens(3)];
+categ(ind(:, 1)) = 1;
+categ(ind(:, 2)) = 2;
+categ(ind(:, 3)) = 3;
 
 cmap = colormap;
-b = barh([regions, regions]', 1, 'stacked', 'EdgeColor', 'none', ...
+b = barh(handles.axPreview, [regions, regions]', 1, 'stacked', 'EdgeColor', 'none', ...
          'ButtonDownFcn', @select_region_from_figure);
-[b(categ == 1).FaceColor] = deal([1, 0, 0]);
-[b(categ == 2).FaceColor] = deal([0, 1, 0]);
-[b(categ == 3).FaceColor] = deal([0, 0, 1]);
+[b(categ == 1).FaceColor] = deal([160, 197, 95]/255);  % [205, 120, 35]/255);
+[b(categ == 2).FaceColor] = deal([123, 59, 59]/255);  % [41, 131, 20]/255);
+[b(categ == 3).FaceColor] = deal([28, 135, 162]/255);  % [31, 149, 179]/255);
 
-handles.axPreview.XLim = [0, sum(regions)+eps];
+if handles.target_exist
+    handles.axPreview.XLim = [0, length(handles.target_seq)+eps];
+else
+    handles.axPreview.XLim = [0, sum(regions)+eps];
+end
 if lens(end) == 0
     handles.axPreview.XTick = [];
 end
@@ -248,6 +257,78 @@ if any(idef)
 end
 
 guidata(hObject, handles);
+
+
+function handles = update_status(handles)
+is_ready = true;
+
+if (handles.target_exist || handles.default_exist) && ~isempty(handles.target_seq)
+    handles.statTarget.String = 'OK';
+else
+    handles.statRun.String = 'data still missing';
+    is_ready = false;
+    handles.statTarget.String = 'required';
+end
+
+is_default_req = ~isempty(handles.default_regions);
+if handles.default_exist
+    if strcmp(handles.target_seq, nt2aa(handles.default_seq, 'AlternativeStartCodons', false)) 
+        handles.statDefault.String = 'OK';
+    else
+        handles.statDefault.String = 'aa != nt';
+        if is_ready
+            handles.statRun.String = 'invalid default';
+        end
+        is_ready = false;
+    end
+elseif is_default_req
+    if is_ready
+        handles.statRun.String = 'default missing';
+    end
+    is_ready = false;
+    handles.statDefault.String = 'required';
+else
+    handles.statDefault.String = 'optional';
+end
+
+if handles.reference_exist
+    handles.statReference.String = 'OK';  % sprintf('OK: %d', length(handles.reference_seq));
+else
+    if is_ready
+        handles.statRun.String = 'reference missing';
+    end
+    is_ready = false;
+    handles.statReference.String = 'required';
+end
+
+if ~any([length(handles.chimera_regions), length(handles.codon_regions)])
+    if is_ready
+        handles.statRun.String = 'regions missing';
+    end
+    is_ready = false;
+end
+
+if is_ready
+    handles.statRun.String = 'ready';
+    handles.butRun.Enable = 'on';
+else
+    handles.butRun.Enable = 'off';
+end
+
+
+function handles = update_chimera(handles)
+tmp = sprintf('win size: %d codons\ncenter: %d\n', handles.winParams.size, handles.winParams.center);
+if handles.winParams.by_start
+    tmp = [tmp, 'start'];
+end
+if handles.winParams.by_start && handles.winParams.by_stop
+    tmp = [tmp, ' + '];
+end
+if handles.winParams.by_stop
+    tmp = [tmp, 'stop'];
+end
+handles.paramChimera.String = tmp;
+
 % --- End of my functions --- %
 
 
@@ -261,14 +342,32 @@ function chimeraGUI_OpeningFcn(hObject, eventdata, handles, varargin)
 
 handles.axPreview.Box = 'on';
 
-handles.target_len = NaN;
+handles.target_seq = '';
+handles.target_name = '';
 handles.target_exist = false;
+
+handles.default_seq = '';
+handles.default_name = '';
 handles.default_exist = false;
+
+handles.reference_seq = {};
+handles.reference_name = {};
 handles.reference_exist = false;
+
+handles.SA = zeros(0, 3);
+handles.SA_exist = false;
+
+handles.CUB = [];
 
 handles.chimera_regions = zeros(0, 2);
 handles.codon_regions = zeros(0, 2);
-update_regions(hObject, handles);
+handles.default_regions = zeros(0, 2);
+
+handles.winParams = struct('size', 70, 'center', 35, 'by_start', 1, 'by_stop', 1, 'truncate_seq', 1);
+
+tuller_logo(handles.axLogo);
+
+update_figure(hObject, handles);
 
 % Choose default command line output for chimeraGUI
 handles.output = hObject;
@@ -277,7 +376,7 @@ handles.output = hObject;
 guidata(hObject, handles);
 
 % UIWAIT makes chimeraGUI wait for user response (see UIRESUME)
-% uiwait(handles.figure1);
+% uiwait(handles.figChimera);
 
 
 % --- Outputs from this function are returned to the command line.
@@ -325,7 +424,7 @@ function butChimeraAddRegion_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 [new_reg, err] = get_region(handles.fieldChimeraFrom, handles.fieldChimeraTo, ...
-                            handles.target_len);
+                            handles.target_seq);
 if err
     return
 end
@@ -358,7 +457,7 @@ end
 
 [~, handles.chimera_regions] = check_region(new_reg, handles.chimera_regions);
 
-update_regions(hObject, handles);
+update_figure(hObject, handles);
 
 
 % --- Executes on button press in butRun.
@@ -375,6 +474,27 @@ function fileTarget_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'String') returns contents of fileTarget as text
 %        str2double(get(hObject,'String')) returns contents of fileTarget as a double
+aa_alphabet = '*ACDEFGHIKLMNPQRSTVWY';
+tmp = upper(hObject.String);
+valid = ismember(tmp, aa_alphabet);
+tmp = tmp(valid);
+if ~isempty(tmp) && tmp(end) ~= '*'
+    tmp(end+1) = '*';
+end
+hObject.String = tmp;
+if strcmp(tmp, handles.target_seq)
+    return
+end
+handles.target_seq = tmp;
+handles.target_name = 'user_input';
+
+if ~isempty(handles.target_seq)
+    handles.target_exist = true;
+else
+    handles.target_exist = false;
+end
+
+update_figure(hObject, handles);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -395,6 +515,56 @@ function butTarget_Callback(hObject, eventdata, handles)
 % hObject    handle to butTarget (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+[fname, dirname] = uigetfile({'*.fa;*.fasta', 'fasta file'}, 'select a protein sequence file');
+if fname == 0
+    errordlg('missing file');
+    return
+end
+seqs = fastaread(fullfile(dirname, fname));
+
+if length(seqs) > 1
+    [ind, ok] = listdlg('ListString', {seqs.Header}, 'Name', 'select a protein', ...
+                        'ListSize', [450, 300], 'SelectionMode', 'single');
+    if ok == 0
+        return
+    end
+    seqs = seqs(ind);
+end
+
+aa_alphabet = '*ACDEFGHIKLMNPQRSTVWY';
+valid = ismember(upper(seqs.Sequence), aa_alphabet);
+if ~all(valid)
+    errordlg(sprintf('protein sequence contains illegal chars ("%s"). \nexpecting an amino acid sequence.', unique(seqs.Sequence(~valid))));
+    return
+end
+nt_alphabet = 'ACGTU';
+if all(ismember(upper(seqs.Sequence), nt_alphabet))
+    warndlg(sprintf('protein sequence may comprise of nucleotides. \nexpecting an amino acid sequence. \nyou may use the default sequence input to select both AA seq and NT seq at once.'));
+end
+
+if seqs.Sequence(end) ~= '*'
+    seqs.Sequence(end+1) = '*';
+end
+
+handles.fileTarget.String = upper(seqs.Sequence);
+handles.target_seq = upper(seqs.Sequence);
+handles.target_name = seqs.Header;
+handles.target_exist = true;
+
+update_figure(hObject, handles);
+
+
+function check_text(eventdata, alphabet)
+if ~ismember(upper(eventdata.Character), alphabet)
+    if ismember(eventdata.Key, {'backspace', 'rightarrow', 'leftarrow', 'return', 'control'})
+        return
+    end
+    if any(ismember(eventdata.Modifier, {'control'}));
+        return
+    end
+    errordlg(sprintf('expecting a sequence with alphabet: %s', alphabet));
+    return
+end
 
 
 function fileReference_Callback(hObject, eventdata, handles)
@@ -424,6 +594,46 @@ function butReference_Callback(hObject, eventdata, handles)
 % hObject    handle to butReference (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+[fname, dirname] = uigetfile({'*.fa;*.fasta', 'fasta file'}, 'select a reference sequence file');
+if fname == 0
+    errordlg('missing file');
+    return
+end
+seqs = fastaread(fullfile(dirname, fname));
+
+nt_alphabet = 'ACGTU';
+valid_seq = true(length(seqs), 1);
+valid_len = true(length(seqs), 1);
+for i = 1:length(seqs)
+    valid_seq(i) = all(ismember(upper(seqs(i).Sequence), nt_alphabet));
+    valid_len(i) = mod(length(seqs(i).Sequence), 3) == 0;
+    seqs(i).Sequence = strrep(upper(seqs(i).Sequence), 'T', 'U');
+end
+
+if ~all(valid_seq)
+    listdlg('ListString', {seqs(~valid_seq).Header}, 'Name', 'invalid seqs', ...
+            'ListSize', [450, 300], ...
+            'PromptString', 'the following seqs contain invalid chars and will be discarded.');
+end
+seqs = seqs(valid_seq);
+valid_len = valid_len(valid_seq);
+
+if ~all(valid_len)
+    [sel, decision] = listdlg('ListString', {seqs(~valid_len).Header}, ...
+                              'Name', 'invalid length', 'ListSize', [450, 300], ...
+                              'OKString', 'discard selected', 'CancelString', 'ignore warning', ...
+                              'PromptString', 'the following seqs have lengths not divisible by 3.');
+    if decision == 1  % 'discard selected'
+        seqs(sel) = [];
+    end
+end
+
+handles.fileReference.String = sprintf('%s: %d seqs', fname, length(seqs));
+handles.reference_seq = {seqs.Sequence}';
+
+handles.reference_exist = true;
+
+update_figure(hObject, handles);
 
 
 % --- Executes on selection change in listCodon.
@@ -467,7 +677,7 @@ function butChimeraRemRegion_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 [new_reg, err] = get_region(handles.fieldChimeraFrom, handles.fieldChimeraTo, ...
-                            handles.target_len);
+                            handles.target_seq);
 if err
     return
 end
@@ -478,7 +688,7 @@ if err == 0
     return
 end
 
-update_regions(hObject, handles);
+update_figure(hObject, handles);
 
 
 function fieldChimeraFrom_Callback(hObject, eventdata, handles)
@@ -547,7 +757,6 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-
 function fileDefault_Callback(hObject, eventdata, handles)
 % hObject    handle to fileDefault (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -555,6 +764,29 @@ function fileDefault_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'String') returns contents of fileDefault as text
 %        str2double(get(hObject,'String')) returns contents of fileDefault as a double
+nt_alphabet = 'ACGT';
+tmp = strrep(upper(hObject.String), 'U', 'T');
+valid = ismember(tmp, nt_alphabet);
+tmp = tmp(valid);
+hObject.String = tmp;
+if strcmp(tmp, handles.target_seq)
+    return
+end
+handles.default_seq = tmp;
+
+if isempty(tmp)
+    handles.default_exist = false;
+else
+    % default seq overrides target AA seq
+    handles.target_seq = nt2aa(tmp, 'AlternativeStartCodons', false);  % TODO: reconsider alternative
+    handles.fileTarget.String = handles.target_seq;
+    handles.target_name = 'user_input';
+    
+    handles.default_exist = true;
+    handles.target_exist = true;
+end
+
+update_figure(hObject, handles);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -575,6 +807,54 @@ function butDefault_Callback(hObject, eventdata, handles)
 % hObject    handle to butDefault (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+[fname, dirname] = uigetfile({'*.fa;*.fasta', 'fasta file'}, 'select a default sequence file');
+if fname == 0
+    errordlg('missing file');
+    return
+end
+seqs = fastaread(fullfile(dirname, fname));
+
+if length(seqs) > 1
+    [ind, ok] = listdlg('ListString', {seqs.Header}, 'Name', 'select a sequence', ...
+                        'ListSize', [450, 300], 'SelectionMode', 'single');
+    if ok == 0
+        return
+    end
+    seqs = seqs(ind);
+end
+
+nt_alphabet = 'ACGTU';
+valid = ismember(upper(seqs.Sequence), nt_alphabet);
+if ~all(valid)
+    errordlg(sprintf('default sequence contains illegal chars ("%s"). \nexpecting a nucleotide sequence.', unique(seqs.Sequence(~valid))));
+    return
+end
+
+tmp = strrep(upper(seqs.Sequence), 'U', 'T');
+tmp_aa = nt2aa(tmp, 'AlternativeStartCodons', false);
+if handles.target_exist && ~strcmp(tmp_aa, handles.target_seq)
+    decision = questdlg('default sequence does not match the current target sequence.', ...
+                        'default sequence error', 'update target', 'cancel', 'cancel');
+    switch decision
+        case 'update target'
+            handles.fileTarget.String = tmp_aa;
+            handles.target_seq = tmp_aa;
+            handles.target_name = seqs.Header;
+        otherwise
+            return
+    end
+elseif ~handles.target_exist
+    handles.fileTarget.String = tmp_aa;
+    handles.target_seq = tmp_aa;
+    handles.target_name = seqs.Header;
+    handles.target_exist = true;
+end
+handles.fileDefault.String = tmp;
+handles.default_seq = tmp;
+
+handles.default_exist = true;
+
+update_figure(hObject, handles);
 
 
 % --- Executes on button press in optSourceRef.
@@ -584,6 +864,8 @@ function optSourceRef_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of optSourceRef
+handles.CUB = [];  % ensure that we don't keep old tables
+guidata(hObject, handles);
 
 
 % --- Executes on button press in optSource.
@@ -601,7 +883,7 @@ function butCodonAddRegion_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 [new_reg, err] = get_region(handles.fieldCodonFrom, handles.fieldCodonTo, ...
-                            handles.target_len);
+                            handles.target_seq);
 if err
     return
 end
@@ -620,7 +902,7 @@ end
 
 [err, ~, trunc_new, trunc_old] = check_region(new_reg, handles.chimera_regions);
 if err
-    decision = questdlg('new region overlaps with an existing codon region', ...
+    decision = questdlg('new region overlaps with an existing chimera region', ...
                         'region overlap', 'keep chimera', 'keep codon', 'keep codon');
     switch decision
         case 'keep chimera'
@@ -634,7 +916,7 @@ end
 
 [~, handles.codon_regions] = check_region(new_reg, handles.codon_regions);
 
-update_regions(hObject, handles);
+update_figure(hObject, handles);
 
 
 % --- Executes on button press in butCodonRemRegion.
@@ -643,7 +925,7 @@ function butCodonRemRegion_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 [new_reg, err] = get_region(handles.fieldCodonFrom, handles.fieldCodonTo, ...
-                            handles.target_len);
+                            handles.target_seq);
 if err
     return
 end
@@ -654,7 +936,7 @@ if err == 0
     return
 end
 
-update_regions(hObject, handles);
+update_figure(hObject, handles);
 
 
 function fieldCodonFrom_Callback(hObject, eventdata, handles)
@@ -706,6 +988,8 @@ function butChimeraOpts_Callback(hObject, eventdata, handles)
 % hObject    handle to butChimeraOpts (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+handles.winParams = winParams(handles.winParams);
+update_figure(hObject, handles);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -722,3 +1006,124 @@ function axPreview_CreateFcn(hObject, eventdata, handles)
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: place code in OpeningFcn to populate axPreview
+
+
+% --- Executes on key press with focus on fileTarget and none of its controls.
+function fileTarget_KeyPressFcn(hObject, eventdata, handles)
+% hObject    handle to fileTarget (see GCBO)
+% eventdata  structure with the following fields (see MATLAB.UI.CONTROL.UICONTROL)
+%	Key: name of the key that was pressed, in lower case
+%	Character: character interpretation of the key(s) that was pressed
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% handles    structure with handles and user data (see GUIDATA)
+aa_alphabet = '*ACDEFGHIKLMNPQRSTVWY';
+check_text(eventdata, aa_alphabet);
+
+
+function fileRegions_Callback(hObject, eventdata, handles)
+% hObject    handle to fileRegions (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of fileRegions as text
+%        str2double(get(hObject,'String')) returns contents of fileRegions as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function fileRegions_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to fileRegions (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in butRegions.
+function butRegions_Callback(hObject, eventdata, handles)
+% hObject    handle to butRegions (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on key press with focus on fileDefault and none of its controls.
+function fileDefault_KeyPressFcn(hObject, eventdata, handles)
+% hObject    handle to fileDefault (see GCBO)
+% eventdata  structure with the following fields (see MATLAB.UI.CONTROL.UICONTROL)
+%	Key: name of the key that was pressed, in lower case
+%	Character: character interpretation of the key(s) that was pressed
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% handles    structure with handles and user data (see GUIDATA)
+nt_alphabet = 'ACGTU';
+check_text(eventdata, nt_alphabet);
+
+
+% --- Executes during object creation, after setting all properties.
+function axLogo_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to axLogo (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: place code in OpeningFcn to populate axLogo
+
+
+% --- Executes on button press in optSourceTable.
+function optSourceTable_Callback(hObject, eventdata, handles)
+% hObject    handle to optSourceTable (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of optSourceTable
+[fname, dirname] = uigetfile({'*.tsv;*.tab', 'tab separated values'}, 'select a codon score table');
+if fname == 0
+    errordlg('missing file');
+    handles.optSourceRef.Value = 1;
+    handles.optSourceTable.Value = 0;
+    handles.CUB = [];
+    guidata(hObject, handles);
+    return
+end
+
+file_OK = true;
+aa_list = fieldnames(aacount(''));
+fid = fopen(fullfile(dirname, fname));
+try
+    T = textscan(fid, '%s\t%f');
+    T{3} = nt2aa(T{1}, 'AlternativeStartCodon', false);
+    aa_OK = ismember(aa_list, T{3});
+catch
+    file_OK = false;
+end
+fclose(fid);
+
+if ~file_OK
+    errordlg('codon table format error. expecting a tab-separated file with 2 columns (and no header): [codon, score]');
+    handles.optSourceRef.Value = 1;
+    handles.optSourceTable.Value = 0;
+    handles.CUB = [];
+    guidata(hObject, handles);
+    return
+end
+
+if ~all(aa_OK)
+    errordlg(sprintf('the following AA are missing from table: %s', char(aa_list(~aa_OK))'));
+    handles.optSourceRef.Value = 1;
+    handles.optSourceTable.Value = 0;
+    handles.CUB = [];
+    guidata(hObject, handles);
+    return
+end
+
+handles.CUB = codonbias('');
+aa_list = fieldnames(handles.CUB)';
+for aa = aa_list
+    iaa = find(strcmpi(T{3}, aminolookup(aa{1})))';
+    for i = iaa
+        icod = strcmpi(T{1}(i), handles.CUB.(aa{1}).Codon);
+        handles.CUB.(aa{1}).Freq(icod) = T{2}(i);
+    end
+end
+guidata(hObject, handles);
