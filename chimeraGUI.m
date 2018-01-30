@@ -22,7 +22,7 @@ function varargout = chimeraGUI(varargin)
 
 % Edit the above text to modify the response to help chimeraGUI
 
-% Last Modified by GUIDE v2.5 21-Jan-2018 21:13:49
+% Last Modified by GUIDE v2.5 30-Jan-2018 23:10:35
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -266,49 +266,57 @@ guidata(hObject, handles);
 
 function handles = update_status(handles)
 is_ready = true;
+handles.statTarget.Visible = 'off';
+handles.statReference.Visible = 'off';
+handles.statRegionFile.Visible = 'off';
+handles.statRegionSel.Visible = 'off';
+handles.optNT.ForegroundColor = [0, 0, 0];
+handles.optNT.FontWeight = 'normal';
+
 
 if (handles.target_exist || handles.default_exist) && ~isempty(handles.target_seq)
-    handles.statTarget.String = 'OK';
+%     handles.statTarget.String = 'OK';
 else
-    handles.statRun.String = 'data still missing';
+    handles.statRun.String = 'target missing';
     is_ready = false;
-    handles.statTarget.String = 'required';
+    handles.statTarget.Visible = 'on';
 end
 
 is_default_req = ~isempty(handles.default_regions);
 if handles.default_exist
-    if strcmp(handles.target_seq, nt2aa(handles.default_seq, 'AlternativeStartCodons', false)) 
-        handles.statDefault.String = 'OK';
+    if strcmp(handles.target_seq, nt2aa(handles.default_seq)) 
+%         handles.statDefault.String = 'OK';
     else
-        handles.statDefault.String = 'aa != nt';
+        handles.statTarget.Visible = 'on';
         if is_ready
-            handles.statRun.String = 'invalid default';
+            handles.statRun.String = 'invalid NT seq';
         end
         is_ready = false;
     end
 elseif is_default_req
     if is_ready
-        handles.statRun.String = 'default missing';
+        handles.statRun.String = 'default NT seq missing';
+        handles.statTarget.Visible = 'on';
+        handles.optNT.ForegroundColor = handles.statTarget.ForegroundColor;
+        handles.optNT.FontWeight = 'bold';
     end
     is_ready = false;
-    handles.statDefault.String = 'required';
-else
-    handles.statDefault.String = 'optional';
 end
 
 if handles.reference_exist
-    handles.statReference.String = 'OK';  % sprintf('OK: %d', length(handles.reference_seq));
+%     handles.statReference.String = 'OK';  % sprintf('OK: %d', length(handles.reference_seq));
 else
     if is_ready
         handles.statRun.String = 'reference missing';
+        handles.statReference.Visible = 'on';
     end
     is_ready = false;
-    handles.statReference.String = 'required';
 end
 
 if ~any([length(handles.chimera_regions), length(handles.codon_regions)])
     if is_ready
         handles.statRun.String = 'regions missing';
+        handles.statRegionSel.Visible = 'on';
     end
     is_ready = false;
 end
@@ -477,7 +485,7 @@ function butRun_Callback(hObject, eventdata, handles)
 % TODO
 
 % 1. codons optimization
-handles.statRun.String = 'codons optim'; guidata(hObject, handles);
+handles.statRun.String = 'codons optim'; drawnow;
 
 if handles.optSourceRef.Value
     codon_seq = maximize_CUB(handles.target_seq, handles.reference_seq);
@@ -490,7 +498,7 @@ end
 
 % 2. chimera optimization
 if ~handles.SA_exist
-    handles.statRun.String = 'building index'; guidata(hObject, handles);
+    handles.statRun.String = 'building index'; drawnow;
 
     handles.reference_aa = nt2aa(handles.reference_seq, 'AlternativeStartCodon', false);  % here false is good
     lens = cellfun(@length, handles.reference_aa);
@@ -498,7 +506,7 @@ if ~handles.SA_exist
     handles.SA(:, 3) = handles.SA(:, 1) - lens(handles.SA(:, 2)) - 1;  % equals -1 at end of seq
     handles.SA_exist = true;
 end
-handles.statRun.String = 'chimera optim'; guidata(hObject, handles);
+handles.statRun.String = 'chimera optim'; drawnow;
 
 if handles.winParams.size >= length(handles.target_seq)
     % not position specific
@@ -515,7 +523,7 @@ writetable(blocks, '../../output.csv')
 
 
 % 3. complete construct from regions
-handles.statRun.String = 'combining regions'; guidata(hObject, handles);
+handles.statRun.String = 'combining regions'; drawnow;
 
 codon_region = region2set(handles.codon_regions);
 chim_region = region2set(handles.chimera_regions);
@@ -535,7 +543,7 @@ outfile = '../../output.fasta';
 if exist(outfile, 'file')
     delete(outfile);
 end
-fastawrite(outfile, sprintf('%s optimized by chimeraDesigner', handles.target_name), final_seq);
+fastawrite(outfile, sprintf('%s optimized by cMapApp', handles.target_name), final_seq);
 
 handles.statRun.String = 'done';
 guidata(hObject, handles);
@@ -548,27 +556,6 @@ function fileTarget_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'String') returns contents of fileTarget as text
 %        str2double(get(hObject,'String')) returns contents of fileTarget as a double
-aa_alphabet = '*ACDEFGHIKLMNPQRSTVWY';
-tmp = upper(hObject.String);
-valid = ismember(tmp, aa_alphabet);
-tmp = tmp(valid);
-if ~isempty(tmp) && tmp(end) ~= '*'
-    tmp(end+1) = '*';
-end
-hObject.String = tmp;
-if strcmp(tmp, handles.target_seq)
-    return
-end
-handles.target_seq = tmp;
-handles.target_name = 'user_input';
-
-if ~isempty(handles.target_seq)
-    handles.target_exist = true;
-else
-    handles.target_exist = false;
-end
-
-update_figure(hObject, handles);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -606,24 +593,72 @@ if length(seqs) > 1
 end
 
 aa_alphabet = '*ACDEFGHIKLMNPQRSTVWY';
-valid = ismember(upper(seqs.Sequence), aa_alphabet);
-if ~all(valid)
-    errordlg(sprintf('protein sequence contains illegal chars ("%s"). \nexpecting an amino acid sequence.', unique(seqs.Sequence(~valid))), 'target seq', 'modal');
+valid_aa = ismember(upper(seqs.Sequence), aa_alphabet);
+nt_alphabet = 'ACGTU';
+valid_nt = ismember(upper(seqs.Sequence), nt_alphabet);
+
+if handles.optAA.Value && ~all(valid_aa)
+    errordlg(sprintf('protein sequence contains illegal AA chars ("%s"). \nexpecting an amino acid sequence.', ...
+             unique(seqs.Sequence(~valid_aa))), 'target seq', 'modal');
     return
 end
-nt_alphabet = 'ACGTU';
-if all(ismember(upper(seqs.Sequence), nt_alphabet))
-    warndlg(sprintf('protein sequence may comprise of nucleotides. \nexpecting an amino acid sequence. \nyou may use the default sequence input to select both AA seq and NT seq at once.'));
+if handles.optNT.Value && ~all(valid_nt)
+    errordlg(sprintf('protein sequence contains illegal NT chars ("%s"). \nexpecting a nucleotide sequence.', ...
+             unique(seqs.Sequence(~valid_nt))), 'target seq', 'modal');
+    return
+end
+if ~all(valid_aa) && ~all(valid_nt)
+    errordlg(sprintf('protein sequence contains illegal AA chars ("%s") \nand illegal NT chars ("%s"). \nexpecting an amino acid / nucleotide sequence.', ...
+             unique(seqs.Sequence(~valid_aa)), unique(seqs.Sequence(~valid_nt))), 'target seq', 'modal');
+    return
 end
 
-if seqs.Sequence(end) ~= '*'
-    seqs.Sequence(end+1) = '*';
+% sequence type logic
+if handles.optAA.Value
+    seq_type = 'AA';
+elseif handles.optNT.Value
+    seq_type = 'NT';
+elseif all(valid_aa)
+    seq_type = 'AA';
+else
+    seq_type = 'NT';
 end
 
-handles.fileTarget.String = upper(seqs.Sequence);
-handles.target_seq = upper(seqs.Sequence);
+switch seq_type
+    case 'AA'
+        handles.optAA.Value = 1;
+        handles.optNT.Value = 0;
+        if seqs.Sequence(end) ~= '*'
+            decision = questdlg('AA sequence is missing a STOP codon.', 'STOP codon', 'add STOP', 'ignore', 'add STOP');
+            if strcmp(decision, 'add STOP')
+                seqs.Sequence(end+1) = '*';
+            end
+        end
+        handles.target_seq = upper(seqs.Sequence);
+        handles.default_seq = '';
+        handles.default_exist = false;
+    case 'NT'
+        if mod(length(seqs.Sequence), 3) > 0
+            errordlg('nucleotide sequence is not divisible by 3', 'target seq', 'modal');
+            return
+        end
+        handles.optNT.Value = 1;
+        handles.optAA.Value = 0;
+        handles.default_seq = upper(seqs.Sequence);
+        handles.target_seq = nt2aa(handles.default_seq);
+        handles.default_exist = true;
+    otherwise
+        error('too many cooks!');
+end
+
+handles.seq_type = seq_type;
+handles.target_file = fname;
 handles.target_name = seqs.Header;
 handles.target_exist = true;
+handles.fileTarget.String = sprintf('%s: [%s seq] %s', handles.target_file, ...
+                                    handles.seq_type, handles.target_name);
+handles.chimera_regions = [1 length(handles.target_seq)];
+handles.codon_regions = [];
 
 update_figure(hObject, handles);
 
@@ -703,11 +738,16 @@ if ~all(valid_len)
     end
 end
 
-handles.fileReference.String = sprintf('%s: %d seqs', fname, length(seqs));
 handles.reference_seq = {seqs.Sequence}';
+handles.reference_file = fname;
+handles.fileReference.String = sprintf('%s: %d seqs', handles.reference_file, length(handles.reference_seq));
 handles.SA = zeros(0, 3);
 
-handles.reference_exist = true;
+if ~isempty(handles.reference_seq)
+    handles.reference_exist = true;
+else
+    handles.reference_exist = false;
+end
 handles.SA_exist = false;
 
 update_figure(hObject, handles);
@@ -1093,8 +1133,9 @@ function fileTarget_KeyPressFcn(hObject, eventdata, handles)
 %	Character: character interpretation of the key(s) that was pressed
 %	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
 % handles    structure with handles and user data (see GUIDATA)
-aa_alphabet = '*ACDEFGHIKLMNPQRSTVWY';
-check_text(eventdata, aa_alphabet);
+if handles.target_exist
+    handles.fileTarget.String = sprintf('%s: [%s seq] %s', handles.target_file, handles.seq_type, handles.target_name);
+end
 
 
 function fileRegions_Callback(hObject, eventdata, handles)
@@ -1154,7 +1195,7 @@ function optSourceTable_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of optSourceTable
-[fname, dirname] = uigetfile({'*.tsv;*.tab', 'tab separated values'}, 'select a codon score table');
+[fname, dirname] = uigetfile({'*.tsv;*.tab;*.*', 'tab separated values'}, 'select a codon score table');
 if fname == 0
     errordlg('missing file', 'codon table', 'modal');
     handles.optSourceRef.Value = 1;
@@ -1204,3 +1245,38 @@ for aa = aa_list
     end
 end
 guidata(hObject, handles);
+
+
+% --- Executes on button press in optNT.
+function optNT_Callback(hObject, eventdata, handles)
+% hObject    handle to optNT (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of optNT
+handles.optNT.Value = 1;
+handles.optAA.Value = 0;
+
+
+% --- Executes on button press in optNT.
+function optAA_Callback(hObject, eventdata, handles)
+% hObject    handle to optNT (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of optNT
+handles.optAA.Value = 1;
+handles.optNT.Value = 0;
+
+
+% --- Executes on key press with focus on fileReference and none of its controls.
+function fileReference_KeyPressFcn(hObject, eventdata, handles)
+% hObject    handle to fileReference (see GCBO)
+% eventdata  structure with the following fields (see MATLAB.UI.CONTROL.UICONTROL)
+%	Key: name of the key that was pressed, in lower case
+%	Character: character interpretation of the key(s) that was pressed
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% handles    structure with handles and user data (see GUIDATA)
+if handles.reference_exist
+    handles.fileReference.String = sprintf('%s: %d seqs', handles.reference_file, length(handles.reference_seq));
+end
