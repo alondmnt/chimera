@@ -524,7 +524,7 @@ function butRun_Callback(hObject, eventdata, handles)
 % hObject    handle to butRun (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
+tic;
 % 0. select output file
 % TODO
 outfile = '../../output';
@@ -558,7 +558,7 @@ for t = 1:ntarg
         handles.reference_aa = nt2aa(handles.reference_seq, 'AlternativeStartCodon', false);  % here false is good
         lens = cellfun(@length, handles.reference_aa);
         handles.SA = build_suffix_array(handles.reference_aa, false);
-        handles.SA(:, 3) = handles.SA(:, 1) - lens(handles.SA(:, 2)) - 1;  % equals -1 at end of seq
+%         handles.SA(:, 3) = handles.SA(:, 1) - lens(handles.SA(:, 2)) - 1;  % equals -1 at end of seq
         handles.SA_exist = true;
     end
     handles.statRun.String = sprintf('%d: chimera optim', t); drawnow;
@@ -641,6 +641,7 @@ for t = 1:ntarg
     handles.default_regions(1) = [];
     update_figure(hObject, handles);
 end
+toc;
 msgbox(sprintf('%d sequences optimized.', ntarg), 'optimization', 'modal');
 
 handles.statRun.String = 'done'; drawnow;
