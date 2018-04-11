@@ -45,7 +45,7 @@ end
 
 
 % --- All my functions are here --- %
-function update_figure(hObject, handles)
+function handles = update_figure(hObject, handles)
 handles = update_regions(handles);
 handles = update_bar(handles);
 handles = update_chimera(handles);
@@ -257,7 +257,7 @@ pos = ceil(eventdata.IntersectionPoint(1));
 
 ichim = handles.chimera_regions{1}(:, 1) <= pos & ...
         pos <= handles.chimera_regions{1}(:, 2);
-if any(ichim)
+if any(ichim) && strcmp(handles.fieldChimeraFrom.Enable, 'on')
     handles.listChimera.Value = find(ichim);
     handles.fieldChimeraFrom.String = sprintf('%d', handles.chimera_regions{1}(ichim, 1));
     handles.fieldChimeraTo.String = sprintf('%d', handles.chimera_regions{1}(ichim, 2));
@@ -265,7 +265,7 @@ end
 
 icod = handles.codon_regions{1}(:, 1) <= pos & ...
        pos <= handles.codon_regions{1}(:, 2);
-if any(icod)
+if any(icod) && strcmp(handles.fieldCodonFrom.Enable, 'on')
     handles.listCodon.Value = find(icod);
     handles.fieldCodonFrom.String = sprintf('%d', handles.codon_regions{1}(icod, 1));
     handles.fieldCodonTo.String = sprintf('%d', handles.codon_regions{1}(icod, 2));
@@ -273,7 +273,7 @@ end
 
 idef = handles.default_regions{1}(:, 1) <= pos & ...
        pos <= handles.default_regions{1}(:, 2);
-if any(idef)
+if any(idef) && strcmp(handles.fieldChimeraFrom.Enable, 'on')
     handles.listDefault.Value = find(idef);
     handles.fieldDefaultFrom.String = sprintf('%d', handles.default_regions{1}(idef, 1));
     handles.fieldDefaultTo.String = sprintf('%d', handles.default_regions{1}(idef, 2));
@@ -350,10 +350,10 @@ if ~all(cellfun(@length, {handles.chimera_regions, ...
                           handles.codon_regions, ...
                           handles.default_regions}) == length(handles.target_seq))
     if is_ready
-        handles.statRun.String = 'regions file missing';
+%         handles.statRun.String = 'regions file missing';
         handles.statRegionFile.Visible = 'on';
     end
-    is_ready = false;
+%     is_ready = false;
 end
 
 if any(cellfun(@(x, y) isempty(x) & isempty(y), ...
@@ -370,6 +370,19 @@ if is_ready
     handles.butRun.Enable = 'on';
 else
     handles.butRun.Enable = 'off';
+end
+
+if handles.target_exist
+    n_seq = length(handles.target_seq);
+    if n_seq > 1
+        handles.fileTarget.String = sprintf('%s: [%d %s seqs]', handles.target_file, ...
+            n_seq, handles.seq_type);
+    else
+        handles.fileTarget.String = sprintf('%s: [%s seq] %s', handles.target_file, ...
+            handles.seq_type, handles.target_name{1});
+    end
+else
+    handles.fileTarget.String = '';
 end
 
 
@@ -524,14 +537,25 @@ function butRun_Callback(hObject, eventdata, handles)
 % hObject    handle to butRun (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-tic;
+
 % 0. select output file
-% TODO
-outfile = '../../output';
-outfasta = sprintf('%s.fasta', outfile);
+[fname, dirname] = uiputfile({'*.fa;*.fasta', 'fasta file'}, 'select output file');
+if fname == 0
+    return
+end
+[~, fname, extent] = fileparts(fname);
+if isempty(extent)
+    extent = '.fasta';
+end
+outfile = fullfile(dirname, fname);
+outfasta = strcat(outfile, extent);
 if exist(outfasta, 'file')
     delete(outfasta);
 end
+if handles.optSourceRef.Value
+    handles.CUB = [];  % we will compute CUB later, once for all targets
+end
+tic;
 
 ntarg = length(handles.target_seq);
 for t = 1:ntarg
@@ -540,7 +564,11 @@ for t = 1:ntarg
     handles.statRun.String = sprintf('%d: codons optim', t); drawnow;
 
     if do_codon && handles.optSourceRef.Value
-        codon_seq = maximize_CUB(handles.target_seq{1}, handles.reference_seq);
+        if isempty(handles.CUB)
+            [codon_seq, handles.CUB] = maximize_CUB(handles.target_seq{1}, handles.reference_seq);
+        else
+            codon_seq = maximize_CUB(handles.target_seq{1}, handles.CUB);
+        end
     elseif do_codon && handles.optSourceTable.Value && isempty(handles.CUB)
         errordlg('missing a codon table', 'codon optimization', 'modal');
         return
@@ -563,9 +591,8 @@ for t = 1:ntarg
     end
     handles.statRun.String = sprintf('%d: chimera optim', t); drawnow;
 
-    if do_chimera && handles.winParams.size >= length(handles.target_seq{1})
+    if do_chimera && (handles.winParams.size) == 0
         % not position specific
-        warndlg(sprintf('%s: window size is larger than target sequence. \nthat is, optimization is not position specific.', handles.target_name{1}));
         [chimera_seq, mblocks] = calc_map(handles.target_seq{1}, handles.SA, ...
             handles.reference_aa, handles.reference_seq);
     elseif do_chimera
@@ -618,7 +645,12 @@ for t = 1:ntarg
     if do_codon
         cblocks = table(handles.codon_regions{1}(:, 1), handles.codon_regions{1}(:, 2), ...
                         'VariableNames', {'pos_s', 'pos_e'});
-        cblocks.type = repelem({'codon'}, height(cblocks), 1);
+        if handles.optSourceRef.Value
+            str_codon = sprintf('codon: %s', handles.reference_file);
+        else
+            str_codon = sprintf('codon: %s', handles.CUB_file);
+        end
+        cblocks.type = repelem({str_codon}, height(cblocks), 1);
         blocks = outerjoin(blocks, cblocks, 'MergeKeys', true);
     end
     if ~isempty(def_region)
@@ -639,10 +671,13 @@ for t = 1:ntarg
     handles.chimera_regions(1) = [];
     handles.codon_regions(1) = [];
     handles.default_regions(1) = [];
-    update_figure(hObject, handles);
+    handles = update_figure(hObject, handles);
+end
+if handles.optSourceRef.Value
+    handles.CUB = [];  % make sure we compute it next time as well
 end
 toc;
-msgbox(sprintf('%d sequences optimized.', ntarg), 'optimization', 'modal');
+% msgbox(sprintf('%d sequences optimized.', ntarg), 'optimization', 'modal');
 
 handles.statRun.String = 'done'; drawnow;
 update_figure(hObject, handles);
@@ -677,7 +712,6 @@ function butTarget_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 [fname, dirname] = uigetfile({'*.fa;*.fasta', 'fasta file'}, 'select a protein sequence file');
 if fname == 0
-    errordlg('missing file', 'target seq', 'modal');
     return
 end
 seqs = fastaread(fullfile(dirname, fname));
@@ -748,13 +782,14 @@ for s = 1:n_seq
             handles.default_exist = false;
         case 'NT'
             if mod(length(seqs(s).Sequence), 3) > 0
-                errordlg('nucleotide sequence is not divisible by 3', 'target seq', 'modal');
+                errordlg('nucleotide sequence is not divisible by 3', ...
+                         sprintf('%s target seq', seqs(s).Header), 'modal');
                 return
             end
             if nt2aa(seqs(s).Sequence(end-2:end)) ~= '*'
                 if ~exist('decision', 'var')
                     decision = questdlg('NT sequence is missing a STOP codon.', ...
-                                        sprintf('%s STOP codon', seqs(s).Header), ...
+                                        sprintf('%s stop codon', seqs(s).Header), ...
                                         'add STOP', 'ignore', 'add STOP');
                 end
                 if strcmp(decision, 'add STOP')
@@ -776,11 +811,10 @@ handles.target_file = fname;
 handles.target_name = {seqs.Header};
 handles.target_exist = true;
 if n_seq > 1
-    handles.fileTarget.String = sprintf('%s: [%d %s seqs]', handles.target_file, ...
-        n_seq, handles.seq_type);
-else
-    handles.fileTarget.String = sprintf('%s: [%s seq] %s', handles.target_file, ...
-        handles.seq_type, handles.target_name{1});
+    handles.fieldChimeraFrom.String = '1';
+    handles.fieldChimeraTo.String = '-1';
+    handles.fieldCodonFrom.String = '1';
+    handles.fieldCodonTo.String = '-1';
 end
 handles.chimera_regions = cellfun(@(x) {[1, length(x)]}, handles.target_seq);
 handles.codon_regions = cellfun(@(x) {[]}, handles.target_seq);
@@ -830,7 +864,6 @@ function butReference_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 [fname, dirname] = uigetfile({'*.fa;*.fasta', 'fasta file'}, 'select a reference sequence file');
 if fname == 0
-    errordlg('missing file', 'reference seq', 'modal');
     return
 end
 seqs = fastaread(fullfile(dirname, fname));
@@ -1169,6 +1202,8 @@ if handles.target_exist
         handles.fileTarget.String = sprintf('%s: [%s seq] %s', handles.target_file, ...
             handles.seq_type, handles.target_name{1});
     end
+else
+    handles.fileTarget.String = '';
 end
 
 
@@ -1201,16 +1236,19 @@ function butRegions_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 [fname, dirname] = uigetfile({'*.reg', 'region file'}, 'select a regions file');
 if fname == 0
-    errordlg('missing file', 'regions file', 'modal');
     return
 end
 regions = fastaread(fullfile(dirname, fname));
 
 [target_in_file, itarg] = ismember(handles.target_name, {regions.Header});
 if ~all(target_in_file)
-    errordlg(sprintf('%d targets missing from file: \n%s', ...
-                     sum(~target_in_file), ...
-                     strjoin(handles.target_name(~target_in_file), '\n')), ...
+    if sum(~target_in_file) < 10
+        str_targets = strjoin(handles.target_name(~target_in_file), '\n');
+    else
+        str_targets = strjoin([handles.target_name(find(~target_in_file, 9)), {'...'}], '\n');
+    end
+    errordlg(sprintf('%d targets missing from file: \n%s', sum(~target_in_file), ...
+                     str_targets), ...
              'regions file', 'modal');
     return
 end
@@ -1218,18 +1256,26 @@ end
 lens_OK = cellfun(@length, {regions(itarg(itarg>0)).Sequence}) == ...
           cellfun(@length, handles.target_seq);
 if ~all(lens_OK)
+    if sum(~lens_OK) < 10
+        str_targets = strjoin(handles.target_name(~lens_OK), '\n');
+    else
+        str_targets = strjoin([handles.target_name(find(~lens_OK, 9)), {'...'}], '\n');
+    end
     errordlg(sprintf('%d targets with wrong length: \n%s \nregion definitions must be equal in length to targets.', ...
-                     sum(~lens_OK), ...
-                     strjoin(handles.target_name(~lens_OK), '\n')), ...
+                     sum(~lens_OK), str_targets), ...
              'regions file', 'modal');
     return
 end
 
 chars_OK = cellfun(@(x) all(ismember(upper(x), 'MCD')), {regions(itarg(itarg>0)).Sequence});
 if ~all(chars_OK)
+    if sum(~chars_OK) < 10
+        str_targets = strjoin(handles.target_name(~chars_OK), '\n');
+    else
+        str_targets = strjoin([handles.target_name(find(~chars_OK, 9)), {'...'}], '\n');
+    end
     errordlg(sprintf('%d bad region definitions: \n%s \nregion definitions should comprise of the chars \n''M'' (cMap), ''C'' (codon), or ''D'' (default).', ...
-                     sum(~chars_OK), ...
-                     strjoin(handles.target_name(~chars_OK), '\n')), ...
+                     sum(~chars_OK), str_targets), ...
              'regions file', 'modal');
     return
 end
@@ -1318,6 +1364,7 @@ if ~all(aa_OK)
     return
 end
 
+handles.CUB_file = fname;
 handles.CUB = codonbias('');
 aa_list = fieldnames(handles.CUB)';
 for aa = aa_list
@@ -1326,6 +1373,8 @@ for aa = aa_list
         icod = strcmpi(T{1}(i), handles.CUB.(aa{1}).Codon);
         handles.CUB.(aa{1}).Freq(icod) = T{2}(i);
     end
+    % TODO: if we intend to add any algorithm which requires sum over aa to
+    %       to be 1, need to add this scaling here.
 end
 guidata(hObject, handles);
 

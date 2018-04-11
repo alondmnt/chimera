@@ -1,4 +1,4 @@
-function seq_nt = maximize_CUB(seq_aa, ref_nt)
+function [seq_nt, CUB] = maximize_CUB(seq_aa, ref_nt)
 % maximize_CUB(seq, ref)
 %   replace all codons with optimal ones according to reference
 %   sequences given in [ren_nt] (cell array). alternatively,
@@ -10,7 +10,7 @@ seq_nt = aa2nt(seq_aa);  % init
 if isstruct(ref_nt)
     CUB = ref_nt;
 else
-    test = ref_nt;
+%     test = ref_nt;
     for i = 1:length(ref_nt)
         last_legal_codon = length(ref_nt{i});
         last_legal_codon = last_legal_codon - mod(last_legal_codon, 3);

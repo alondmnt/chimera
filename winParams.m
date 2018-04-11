@@ -64,15 +64,15 @@ handles.winParams.by_start = handles.checkStart.Value;
 handles.winParams.by_stop = handles.checkStop.Value;
 handles.winParams.truncate_seq = handles.checkBlockEnd.Value;
 tmp = str2double(handles.fieldWinSize.String);
-if isnan(tmp)
-    errordlg('invalid window size value', 'window size error', 'modal');
+if ~isfinite(tmp) || (tmp < 0)
+    errordlg(sprintf('invalid window size value: %g', tmp), 'window size error', 'modal');
     handles.fieldWinSize.String = num2str(handles.winParams.size);
 else
     handles.winParams.size = round(tmp);
 end
 tmp = str2double(handles.fieldWinCenter.String);
-if isnan(tmp)
-    errordlg('invalid window center value', 'window center error', 'modal');
+if ~isfinite(tmp)
+    errordlg(sprintf('invalid window center value: %g', tmp), 'window center error', 'modal');
     handles.fieldWinCenter.String = num2str(handles.winParams.center);
 else
     handles.winParams.center = round(tmp);
