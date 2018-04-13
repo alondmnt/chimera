@@ -302,7 +302,7 @@ end
 
 is_default_req = ~all(cellfun(@isempty, handles.default_regions));
 if handles.default_exist
-    default_test = strcmp(handles.target_seq, nt2aa(handles.default_seq));
+    default_test = strcmp(handles.target_seq, nt2aa(handles.default_seq, 'AlternativeStartCodons', true));
     if all(default_test)
 %         handles.statDefault.String = 'OK';
     else
@@ -583,7 +583,7 @@ for t = 1:ntarg
     if do_chimera && ~handles.SA_exist
         handles.statRun.String = sprintf('%d: building index', t); drawnow;
 
-        handles.reference_aa = nt2aa(handles.reference_seq, 'AlternativeStartCodon', false);  % here false is good
+        handles.reference_aa = nt2aa(handles.reference_seq, 'AlternativeStartCodons', false);  % here false is good
         lens = cellfun(@length, handles.reference_aa);
         handles.SA = build_suffix_array(handles.reference_aa, false);
 %         handles.SA(:, 3) = handles.SA(:, 1) - lens(handles.SA(:, 2)) - 1;  % equals -1 at end of seq
@@ -619,7 +619,9 @@ for t = 1:ntarg
     seq_source(chim_region) = 2;
     seq_source(def_region) = 3;
     final_seq = cellcat(arrayfun(@(x, y) {seq_bank{x}(3*(y-1)+1:3*y)}, seq_source, 1:length(seq_source)), 2);
-    assert(strcmp(nt2aa(final_seq, 'AlternativeStartCodons', false), handles.target_seq{1}), 'final seq error');
+    assert(strcmp(nt2aa(final_seq, 'AlternativeStartCodons', true), handles.target_seq{1}), 'final seq error');
+    % NOTE: as long as we allow alternative starts in [default_seq], so do
+    %       we need to allow it here
 
     % generate a block table
     blocks = table(0, 0, {'init'}, {''}, 0, {''}, 'VariableNames', ...
@@ -769,11 +771,11 @@ for s = 1:n_seq
             handles.optNT.Value = 0;
             if seqs(s).Sequence(end) ~= '*'
                 if ~exist('decision', 'var')
-                    decision = questdlg('AA sequence is missing a STOP codon.', ...
-                                        sprintf('%s STOP codon', seqs(s).Header), ...
-                                        'add STOP', 'ignore', 'add STOP');
+                    stop_decis = questdlg('AA sequence is missing a STOP codon.', ...
+                                          sprintf('%s STOP codon', seqs(s).Header), ...
+                                          'add STOP', 'ignore', 'add STOP');
                 end
-                if strcmp(decision, 'add STOP')
+                if strcmp(stop_decis, 'add STOP')
                     seqs(s).Sequence(end+1) = '*';
                 end
             end
@@ -788,18 +790,21 @@ for s = 1:n_seq
             end
             if nt2aa(seqs(s).Sequence(end-2:end)) ~= '*'
                 if ~exist('decision', 'var')
-                    decision = questdlg('NT sequence is missing a STOP codon.', ...
-                                        sprintf('%s stop codon', seqs(s).Header), ...
-                                        'add STOP', 'ignore', 'add STOP');
+                    stop_decis = questdlg('NT sequence is missing a STOP codon.', ...
+                                          sprintf('%s stop codon', seqs(s).Header), ...
+                                          'add STOP', 'ignore', 'add STOP');
                 end
-                if strcmp(decision, 'add STOP')
+                if strcmp(stop_decis, 'add STOP')
                     seqs(s).Sequence(end+1:end+3) = aa2nt('*');
                 end
             end
             handles.optNT.Value = 1;
             handles.optAA.Value = 0;
             handles.default_seq{end+1} = upper(seqs(s).Sequence);
-            handles.target_seq{end+1} = nt2aa(handles.default_seq{end});
+            handles.target_seq{end+1} = nt2aa(handles.default_seq{end}, ...
+                                              'AlternativeStartCodons', true);
+            % NOTE: here we allow alternative starts so that the given
+            %       target is translated correctly.
             handles.default_exist = true;
         otherwise
             error('too many cooks!');
@@ -1339,7 +1344,7 @@ aa_list = fieldnames(aacount(''));
 fid = fopen(fullfile(dirname, fname));
 try
     T = textscan(fid, '%s\t%f');
-    T{3} = nt2aa(T{1}, 'AlternativeStartCodon', false);
+    T{3} = nt2aa(T{1}, 'AlternativeStartCodons', false);
     aa_OK = ismember(aa_list, T{3});
 catch
     file_OK = false;
