@@ -132,9 +132,9 @@ if isempty(region)
     return
 end
 set = cellcat(arrayfun(@(x, y) {x:y}, region(:, 1), region(:, 2)), 2);
-n = length(set);
-set = unique(set);
-assert(length(set) == n, 'overlapping regions')
+% n = length(set);
+% set = unique(set);
+% assert(length(set) == n, 'overlapping regions')
 
 
 function region = set2region(set)
@@ -153,8 +153,8 @@ region = cellcat(arrayfun(@(x, y) {[set(x+1), set(y)]}, ireg(1:end-1), ireg(2:en
 
 
 function handles = update_regions(handles)
-% update all list boxes and barplot. showing the first set of regions when
-% a multiple-region file is known.
+% update all list boxes and barplot (regions map). showing the first set of
+% regions when a multiple-region file is known.
 if isempty(handles.chimera_regions)
     chim_region = [];
 else
@@ -167,6 +167,13 @@ else
 end
 assert(isempty(intersect(chim_region, codon_region)), 'codon/chimera overlap');
 
+if strcmp(handles.fieldChimeraTo.Enable, 'off')
+    % otherwise this may raise warnings
+    handles.fieldChimeraTo.String = '-1';
+    handles.fieldCodonTo.String = '-1';
+    handles.fieldChimeraFrom.String = '1';
+    handles.fieldCodonFrom.String = '1';
+end
 if isempty(handles.target_seq)
     handles.target_exist = false;
     handles.default_exist = false;
@@ -220,6 +227,7 @@ Value = [find(regions(:, 1) == reg(:, 1)); find(regions(:, 2) == reg(:, 2))];
 
 
 function handles = update_bar(handles)
+% plots a map of all region types in the currently designed gene.
 regions = {handles.chimera_regions{1}, handles.codon_regions{1}, handles.default_regions{1}};
 lens = cumsum(cellfun(@(x) size(x, 1), regions));
 
@@ -283,6 +291,8 @@ guidata(hObject, handles);
 
 
 function handles = update_status(handles)
+% this functions determines whether all prequisites for the optimization
+% are met (and signals the user whether data is missing).
 is_ready = true;
 handles.statTarget.Visible = 'off';
 handles.statReference.Visible = 'off';
@@ -301,18 +311,7 @@ else
 end
 
 is_default_req = ~all(cellfun(@isempty, handles.default_regions));
-if handles.default_exist
-    default_test = strcmp(handles.target_seq, nt2aa(handles.default_seq, 'AlternativeStartCodons', true));
-    if all(default_test)
-%         handles.statDefault.String = 'OK';
-    else
-        handles.statTarget.Visible = 'on';
-        if is_ready
-            handles.statRun.String = sprintf('invalid %d NT seq', sum(~default_test));
-        end
-        is_ready = false;
-    end
-elseif is_default_req
+if is_default_req && ~handles.default_exist
     if is_ready
         handles.statRun.String = 'default NT seq missing';
         handles.statTarget.Visible = 'on';
@@ -387,6 +386,7 @@ end
 
 
 function handles = update_chimera(handles)
+% algorithm parameters displayed
 tmp = sprintf('win size: %d codons\ncenter: %d\n', handles.winParams.size, handles.winParams.center);
 if handles.winParams.by_start
     tmp = [tmp, 'start'];
@@ -539,9 +539,12 @@ function butRun_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % 0. select output file
+profiling_run = false;
 [fname, dirname] = uiputfile({'*.fa;*.fasta', 'fasta file'}, 'select output file');
 if fname == 0
     return
+elseif strcmp(fname, 'profiling.fa')
+    profiling_run = true;
 end
 [~, fname, extent] = fileparts(fname);
 if isempty(extent)
@@ -612,7 +615,7 @@ for t = 1:ntarg
     assert(isempty(intersect(codon_region, chim_region)) && ...
         isempty(intersect(codon_region, def_region)) && ...
         isempty(intersect(chim_region, def_region)), 'overlapping regions')
-
+    
     seq_bank = {codon_seq, chimera_seq, handles.default_seq{1}};
     seq_source = [];
     seq_source(codon_region) = 1;
@@ -624,48 +627,51 @@ for t = 1:ntarg
     %       we need to allow it here
 
     % generate a block table
-    blocks = table(0, 0, {'init'}, {''}, 0, {''}, 'VariableNames', ...
-                   {'pos_s', 'pos_e', 'type', 'gene', 'gene_loc', 'block'});
-    if do_chimera
-        mblocks = table(cumsum([1; cellfun(@length, mblocks(1:end-1, 3))/3]), ...
-            cumsum(cellfun(@length, mblocks(:, 3))/3), ...
-            mblocks(:, 1), cell2mat(mblocks(:, 2)), mblocks(:, 3), 'VariableNames', ...
-            {'pos_s', 'pos_e', 'gene', 'gene_loc', 'block'});
-        erase = [];
-        for b = 1:height(mblocks)
-            % keep entire block if it intersects with a chimeric region
-            in_region = intersect(mblocks.pos_s(b):mblocks.pos_e(b), chim_region);
-            if isempty(in_region)
-                erase = [erase; b];
+    if ~profiling_run
+        handles.statRun.String = sprintf('%d: saving', t); drawnow;
+        blocks = table(0, 0, {'init'}, {''}, 0, {''}, 'VariableNames', ...
+            {'pos_s', 'pos_e', 'type', 'gene', 'gene_loc', 'block'});
+        if do_chimera
+            mblocks = table(cumsum([1; cellfun(@length, mblocks(1:end-1, 3))/3]), ...
+                cumsum(cellfun(@length, mblocks(:, 3))/3), ...
+                mblocks(:, 1), cell2mat(mblocks(:, 2)), mblocks(:, 3), 'VariableNames', ...
+                {'pos_s', 'pos_e', 'gene', 'gene_loc', 'block'});
+            erase = [];
+            for b = 1:height(mblocks)
+                % keep entire block if it intersects with a chimeric region
+                in_region = intersect(mblocks.pos_s(b):mblocks.pos_e(b), chim_region);
+                if isempty(in_region)
+                    erase = [erase; b];
+                end
             end
+            mblocks(erase, :) = [];
+            mblocks.gene = cellfun(@(x) handles.reference_name(x), mblocks.gene);
+            mblocks.type = repelem({'cMap'}, height(mblocks), 1);
+            blocks = outerjoin(blocks, mblocks, 'MergeKeys', true);
         end
-        mblocks(erase, :) = [];
-        mblocks.gene = cellfun(@(x) handles.reference_name(x), mblocks.gene);
-        mblocks.type = repelem({'cMap'}, height(mblocks), 1);
-        blocks = outerjoin(blocks, mblocks, 'MergeKeys', true);
-    end
-    if do_codon
-        cblocks = table(handles.codon_regions{1}(:, 1), handles.codon_regions{1}(:, 2), ...
-                        'VariableNames', {'pos_s', 'pos_e'});
-        if handles.optSourceRef.Value
-            str_codon = sprintf('codon: %s', handles.reference_file);
-        else
-            str_codon = sprintf('codon: %s', handles.CUB_file);
+        if do_codon
+            cblocks = table(handles.codon_regions{1}(:, 1), handles.codon_regions{1}(:, 2), ...
+                'VariableNames', {'pos_s', 'pos_e'});
+            if handles.optSourceRef.Value
+                str_codon = sprintf('codon: %s', handles.reference_file);
+            else
+                str_codon = sprintf('codon: %s', handles.CUB_file);
+            end
+            cblocks.type = repelem({str_codon}, height(cblocks), 1);
+            blocks = outerjoin(blocks, cblocks, 'MergeKeys', true);
         end
-        cblocks.type = repelem({str_codon}, height(cblocks), 1);
-        blocks = outerjoin(blocks, cblocks, 'MergeKeys', true);
+        if ~isempty(def_region)
+            dblocks = table(handles.default_regions{1}(:, 1), handles.default_regions{1}(:, 2), ...
+                'VariableNames', {'pos_s', 'pos_e'});
+            dblocks.type = repelem({'default'}, height(dblocks), 1);
+            blocks = outerjoin(blocks, dblocks, 'MergeKeys', true);
+        end
+        blocks(1, :) = [];
+        
+        writetable(blocks, sprintf('%s_%s.csv', outfile, handles.target_name{1}))
+        fastawrite(outfasta, ...
+            sprintf('%s optimized by cMapApp', handles.target_name{1}), final_seq);
     end
-    if ~isempty(def_region)
-        dblocks = table(handles.default_regions{1}(:, 1), handles.default_regions{1}(:, 2), ...
-                        'VariableNames', {'pos_s', 'pos_e'});
-        dblocks.type = repelem({'default'}, height(dblocks), 1);
-        blocks = outerjoin(blocks, dblocks, 'MergeKeys', true);
-    end
-    blocks(1, :) = [];
-
-    writetable(blocks, sprintf('%s_%s.csv', outfile, handles.target_name{1}))
-    fastawrite(outfasta, ...
-               sprintf('%s optimized by cMapApp', handles.target_name{1}), final_seq);
 
     handles.target_seq(1) = [];
     handles.default_seq(1) = [];
@@ -764,38 +770,50 @@ end
 
 handles.target_seq = {};
 handles.default_seq = {};
+handles.target_name = {};
+ignored_len = {};
+ignored_stop = {};
+added_stop = {};
 for s = 1:n_seq
     switch seq_type
         case 'AA'
             handles.optAA.Value = 1;
             handles.optNT.Value = 0;
             if seqs(s).Sequence(end) ~= '*'
-                if ~exist('decision', 'var')
+                if ~exist('stop_decis', 'var')
                     stop_decis = questdlg('AA sequence is missing a STOP codon.', ...
                                           sprintf('%s STOP codon', seqs(s).Header), ...
                                           'add STOP', 'ignore', 'add STOP');
                 end
                 if strcmp(stop_decis, 'add STOP')
                     seqs(s).Sequence(end+1) = '*';
+                    added_stop{end+1} = seqs(s).Header;
+                else
+                    ignored_stop{end+1} = seqs(s).Header;
+                    continue
                 end
             end
             handles.target_seq{end+1} = upper(seqs(s).Sequence);
             handles.default_seq{end+1} = '';
+            handles.target_name{end+1} = seqs(s).Header;
             handles.default_exist = false;
         case 'NT'
             if mod(length(seqs(s).Sequence), 3) > 0
-                errordlg('nucleotide sequence is not divisible by 3', ...
-                         sprintf('%s target seq', seqs(s).Header), 'modal');
-                return
+                ignored_len{end+1} = seqs(s).Header;
+                continue
             end
             if nt2aa(seqs(s).Sequence(end-2:end)) ~= '*'
-                if ~exist('decision', 'var')
+                if ~exist('stop_decis', 'var')
                     stop_decis = questdlg('NT sequence is missing a STOP codon.', ...
                                           sprintf('%s stop codon', seqs(s).Header), ...
                                           'add STOP', 'ignore', 'add STOP');
                 end
                 if strcmp(stop_decis, 'add STOP')
                     seqs(s).Sequence(end+1:end+3) = aa2nt('*');
+                    added_stop{end+1} = seqs(s).Header;
+                else
+                    ignored_stop{end+1} = seqs(s).Header;
+                    continue
                 end
             end
             handles.optNT.Value = 1;
@@ -805,15 +823,31 @@ for s = 1:n_seq
                                               'AlternativeStartCodons', true);
             % NOTE: here we allow alternative starts so that the given
             %       target is translated correctly.
+            handles.target_name{end+1} = seqs(s).Header;
             handles.default_exist = true;
         otherwise
             error('too many cooks!');
     end
 end
 
+if ~isempty(ignored_len)
+    warndlg(sprintf('%d targets not divisible by 3 (ignored): \n%s', ...
+                    length(ignored_len), strjoin(ignored_len, '\n')), ...
+            'target protein length', 'modal');
+end
+if ~isempty(ignored_stop)
+    warndlg(sprintf('%d targets missing a STOP codon (ignored): \n%s', ...
+                    length(ignored_stop), strjoin(ignored_stop, '\n')), ...
+            'target protein STOP', 'modal');
+end
+if ~isempty(added_stop)
+    warndlg(sprintf('%d targets missing a STOP codon (added): \n%s', ...
+                    length(added_stop), strjoin(added_stop, '\n')), ...
+            'target protein STOP', 'modal');
+end
+
 handles.seq_type = seq_type;
 handles.target_file = fname;
-handles.target_name = {seqs.Header};
 handles.target_exist = true;
 if n_seq > 1
     handles.fieldChimeraFrom.String = '1';
@@ -1331,7 +1365,6 @@ function optSourceTable_Callback(hObject, eventdata, handles)
 % Hint: get(hObject,'Value') returns toggle state of optSourceTable
 [fname, dirname] = uigetfile({'*.tsv;*.tab;*.*', 'tab separated values'}, 'select a codon score table');
 if fname == 0
-    errordlg('missing file', 'codon table', 'modal');
     handles.optSourceRef.Value = 1;
     handles.optSourceTable.Value = 0;
     handles.CUB = [];
