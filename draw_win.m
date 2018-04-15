@@ -12,6 +12,13 @@ else
 end
 cla;
 
+if ~win_size
+    h_axes.XLim = [0, 100];
+    h_axes.YLim = [0, 1];
+    text(50, 0, 'not position-specific', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
+    return
+end
+
 if start_dist
     start_dist = 1.5*win_size;
 end
@@ -19,8 +26,8 @@ if stop_dist
     stop_dist = 1.5*win_size;
 end
 
-pos = start_dist;
-L = start_dist + stop_dist;
+pos = 0;
+% L = start_dist + stop_dist;
 
 win_x = pos - win_size/2 + win_center;
 win_y = win_size / 4;
@@ -31,19 +38,20 @@ plot_arrow(win_x, 1.2*win_y, win_x + win_size, 1.2*win_y, 0.1);
 plot_arrow(win_x + win_size, 1.2*win_y, win_x, 1.2*win_y, 0.1);
 text(win_x + win_size/2, 1.2*win_y + win_size/16, 'window size', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
 
-scatter(start_dist, 0, 200, 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
+scatter(0, 0, 200, 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
 text(pos, -win_size/16, sprintf('position\nin target'), 'HorizontalAlignment', 'center', 'VerticalAlignment', 'top');
 
 if start_dist
-    plot_arrow(0, 0, 0.93*start_dist, 0, 0.1);
-    text(start_dist/2, -win_size/16, sprintf('dist from\nSTART'), 'HorizontalAlignment', 'center', 'VerticalAlignment', 'top');
+    plot_arrow(-start_dist, 0, -0.07*start_dist, 0, 0.1);
+    text(-start_dist/2, -win_size/16, sprintf('dist from\nSTART'), 'HorizontalAlignment', 'center', 'VerticalAlignment', 'top');
 end
 if stop_dist
-    plot_arrow(L, 0, L - 0.93*stop_dist +1, 0, 0.1);
-    text(L - stop_dist/2, -win_size/16, sprintf('dist from\nSTOP'), 'HorizontalAlignment', 'center', 'VerticalAlignment', 'top');
+    plot_arrow(stop_dist, 0, 0.07*stop_dist, 0, 0.1);
+    text(stop_dist/2, -win_size/16, sprintf('dist from\nSTOP'), 'HorizontalAlignment', 'center', 'VerticalAlignment', 'top');
 end
 
 axis('equal');
+h_axes.XLim = [min(-1.5*win_size, win_x), max(1.5*win_size, win_x + win_size)];
 
 str_block = repmat('ACGTACGTACGT', 1, 10);
 for i = 1:100
@@ -58,6 +66,7 @@ text(win_x + win_size/3, win_y/2, str_block(1:i-1), 'HorizontalAlignment', 'left
 
 hold('off');
 
+h_axes.XLim = [min(-1.5*win_size, win_x), max(1.5*win_size, win_x + win_size)];
 set(gca, 'XTick', [], 'YTick', []);
 
 
