@@ -1146,7 +1146,7 @@ if err
     return
 end
 
-[err, ~, ~, handles.codon_regions] = check_region(new_reg, handles.codon_regions{1});
+[err, ~, ~, handles.codon_regions{1}] = check_region(new_reg, handles.codon_regions{1});
 if err == 0
     errordlg('region does not exist', 'codon regions', 'modal');
     return
