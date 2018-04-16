@@ -409,8 +409,6 @@ function chimeraGUI_OpeningFcn(hObject, eventdata, handles, varargin)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to chimeraGUI (see VARARGIN)
-addpath('../');
-addpath('../pos-spec/');
 
 handles.axPreview.Box = 'on';
 
@@ -599,7 +597,7 @@ for t = 1:ntarg
         [chimera_seq, mblocks] = calc_map(handles.target_seq{1}, handles.SA, ...
             handles.reference_aa, handles.reference_seq);
     elseif do_chimera
-        [chimera_seq, mblocks] = calc_cmap_posspec1(handles.target_seq{1}, handles.SA, ...
+        [chimera_seq, mblocks] = calc_cmap_posspec(handles.target_seq{1}, handles.SA, ...
             handles.reference_aa, handles.reference_seq, ...
             handles.winParams);
     else
@@ -1146,7 +1144,7 @@ if err
     return
 end
 
-[err, ~, ~, handles.codon_regions] = check_region(new_reg, handles.codon_regions{1});
+[err, ~, ~, handles.codon_regions{1}] = check_region(new_reg, handles.codon_regions{1});
 if err == 0
     errordlg('region does not exist', 'codon regions', 'modal');
     return

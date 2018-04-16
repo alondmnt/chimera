@@ -1,0 +1,137 @@
+<deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
+  <configuration build-checksum="3068896611" file="/tamir1/dalon/engineering/chimera/code/GUI/cMapApp.prj" location="/tamir1/dalon/engineering/chimera/code/GUI" name="cMapApp" preferred-package-location="/tamir1/dalon/engineering/chimera/code/GUI/cMapApp/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.standalone" target-name="Application Compiler">
+    <param.appname>cMapApp</param.appname>
+    <param.icon />
+    <param.icons />
+    <param.version>0.9</param.version>
+    <param.authnamewatermark>Alon Diament</param.authnamewatermark>
+    <param.email />
+    <param.company />
+    <param.summary />
+    <param.description />
+    <param.screenshot>${PROJECT_ROOT}/cMapApp logo.png</param.screenshot>
+    <param.guid />
+    <param.installpath.string>/cMapApp/</param.installpath.string>
+    <param.installpath.combo>option.installpath.user</param.installpath.combo>
+    <param.logo />
+    <param.install.notes />
+    <param.target.install.notes />
+    <param.intermediate>${PROJECT_ROOT}/cMapApp/for_testing</param.intermediate>
+    <param.files.only>${PROJECT_ROOT}/cMapApp/for_redistribution_files_only</param.files.only>
+    <param.output>${PROJECT_ROOT}/cMapApp/for_redistribution</param.output>
+    <param.enable.clean.build>false</param.enable.clean.build>
+    <param.user.defined.mcr.options />
+    <param.embed.ctf>true</param.embed.ctf>
+    <param.target.type>subtarget.standalone</param.target.type>
+    <param.support.packages />
+    <param.required.mcr.products>
+      <item>35000</item>
+      <item>35010</item>
+      <item>35001</item>
+    </param.required.mcr.products>
+    <param.web.mcr>true</param.web.mcr>
+    <param.package.mcr>false</param.package.mcr>
+    <param.no.mcr>false</param.no.mcr>
+    <param.web.mcr.name>cMapApp_install</param.web.mcr.name>
+    <param.package.mcr.name>MyAppInstaller_mcr</param.package.mcr.name>
+    <param.no.mcr.name>MyAppInstaller_app</param.no.mcr.name>
+    <param.windows.command.prompt>false</param.windows.command.prompt>
+    <param.create.log>false</param.create.log>
+    <param.log.file />
+    <unset>
+      <param.icon />
+      <param.icons />
+      <param.email />
+      <param.company />
+      <param.summary />
+      <param.description />
+      <param.guid />
+      <param.installpath.string />
+      <param.installpath.combo />
+      <param.logo />
+      <param.target.install.notes />
+      <param.intermediate />
+      <param.files.only />
+      <param.output />
+      <param.enable.clean.build />
+      <param.user.defined.mcr.options />
+      <param.embed.ctf />
+      <param.target.type />
+      <param.support.packages />
+      <param.web.mcr />
+      <param.package.mcr />
+      <param.no.mcr />
+      <param.package.mcr.name />
+      <param.no.mcr.name />
+      <param.windows.command.prompt />
+      <param.create.log />
+      <param.log.file />
+    </unset>
+    <fileset.main>
+      <file>${PROJECT_ROOT}/chimeraGUI.m</file>
+    </fileset.main>
+    <fileset.resources>
+      <file>${PROJECT_ROOT}/cMapApp logo small.png</file>
+      <file>${PROJECT_ROOT}/cMapApp logo.png</file>
+    </fileset.resources>
+    <fileset.package />
+    <fileset.depfun>
+      <file>/tamir1/dalon/engineering/chimera/code/binary_search.m</file>
+      <file>/tamir1/dalon/engineering/chimera/code/build_suffix_array.m</file>
+      <file>/tamir1/dalon/engineering/chimera/code/calc_map.m</file>
+      <file>/tamir1/dalon/engineering/chimera/code/longest_prefix.m</file>
+      <file>/tamir1/dalon/engineering/chimera/code/merge_arrays.mexa64</file>
+    </fileset.depfun>
+    <build-deliverables>
+      <file location="${PROJECT_ROOT}/cMapApp/for_testing" name="readme.txt" optional="true">/tamir1/dalon/engineering/chimera/code/GUI/cMapApp/for_testing/readme.txt</file>
+      <file location="${PROJECT_ROOT}/cMapApp/for_testing" name="splash.png" optional="false">/tamir1/dalon/engineering/chimera/code/GUI/cMapApp/for_testing/splash.png</file>
+      <file location="${PROJECT_ROOT}/cMapApp/for_testing" name="cMapApp" optional="false">/tamir1/dalon/engineering/chimera/code/GUI/cMapApp/for_testing/cMapApp</file>
+      <file location="${PROJECT_ROOT}/cMapApp/for_testing" name="run_cMapApp.sh" optional="false">/tamir1/dalon/engineering/chimera/code/GUI/cMapApp/for_testing/run_cMapApp.sh</file>
+    </build-deliverables>
+    <workflow />
+    <matlab>
+      <root>/usr/local.cc/lib64/matlabr2015b</root>
+      <toolboxes>
+        <toolbox name="matlabhdlcoder" />
+        <toolbox name="fixedpoint" />
+        <toolbox name="embeddedcoder" />
+        <toolbox name="matlabcoder" />
+      </toolboxes>
+      <toolbox>
+        <matlabhdlcoder>
+          <enabled>true</enabled>
+        </matlabhdlcoder>
+      </toolbox>
+      <toolbox>
+        <fixedpoint>
+          <enabled>true</enabled>
+        </fixedpoint>
+      </toolbox>
+      <toolbox>
+        <embeddedcoder>
+          <enabled>true</enabled>
+        </embeddedcoder>
+      </toolbox>
+      <toolbox>
+        <matlabcoder>
+          <enabled>true</enabled>
+        </matlabcoder>
+      </toolbox>
+    </matlab>
+    <platform>
+      <unix>true</unix>
+      <mac>false</mac>
+      <windows>false</windows>
+      <win2k>false</win2k>
+      <winxp>false</winxp>
+      <vista>false</vista>
+      <linux>true</linux>
+      <solaris>false</solaris>
+      <osver>3.10.0-514.2.2.el7.x86_64</osver>
+      <os32>false</os32>
+      <os64>true</os64>
+      <arch>glnxa64</arch>
+      <matlab>true</matlab>
+    </platform>
+  </configuration>
+</deployment-project>
