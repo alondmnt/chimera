@@ -1,35 +1,35 @@
-function varargout = chimeraGUI(varargin)
-% CHIMERAGUI MATLAB code for chimeraGUI.fig
-%      CHIMERAGUI, by itself, creates a new CHIMERAGUI or raises the existing
+function varargout = chimeraGUI_linux(varargin)
+% CHIMERAGUI_LINUX MATLAB code for chimeraGUI_linux.fig
+%      CHIMERAGUI_LINUX, by itself, creates a new CHIMERAGUI_LINUX or raises the existing
 %      singleton*.
 %
-%      H = CHIMERAGUI returns the handle to a new CHIMERAGUI or the handle to
+%      H = CHIMERAGUI_LINUX returns the handle to a new CHIMERAGUI_LINUX or the handle to
 %      the existing singleton*.
 %
-%      CHIMERAGUI('CALLBACK',hObject,eventData,handles,...) calls the local
-%      function named CALLBACK in CHIMERAGUI.M with the given input arguments.
+%      CHIMERAGUI_LINUX('CALLBACK',hObject,eventData,handles,...) calls the local
+%      function named CALLBACK in CHIMERAGUI_LINUX.M with the given input arguments.
 %
-%      CHIMERAGUI('Property','Value',...) creates a new CHIMERAGUI or raises the
+%      CHIMERAGUI_LINUX('Property','Value',...) creates a new CHIMERAGUI_LINUX or raises the
 %      existing singleton*.  Starting from the left, property value pairs are
-%      applied to the GUI before chimeraGUI_OpeningFcn gets called.  An
+%      applied to the GUI before chimeraGUI_linux_OpeningFcn gets called.  An
 %      unrecognized property name or invalid value makes property application
-%      stop.  All inputs are passed to chimeraGUI_OpeningFcn via varargin.
+%      stop.  All inputs are passed to chimeraGUI_linux_OpeningFcn via varargin.
 %
 %      *See GUI Options on GUIDE's Tools menu.  Choose "GUI allows only one
 %      instance to run (singleton)".
 %
 % See also: GUIDE, GUIDATA, GUIHANDLES
 
-% Edit the above text to modify the response to help chimeraGUI
+% Edit the above text to modify the response to help chimeraGUI_linux
 
-% Last Modified by GUIDE v2.5 06-Apr-2018 11:16:02
+% Last Modified by GUIDE v2.5 17-Apr-2018 16:44:04
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
 gui_State = struct('gui_Name',       mfilename, ...
                    'gui_Singleton',  gui_Singleton, ...
-                   'gui_OpeningFcn', @chimeraGUI_OpeningFcn, ...
-                   'gui_OutputFcn',  @chimeraGUI_OutputFcn, ...
+                   'gui_OpeningFcn', @chimeraGUI_linux_OpeningFcn, ...
+                   'gui_OutputFcn',  @chimeraGUI_linux_OutputFcn, ...
                    'gui_LayoutFcn',  [] , ...
                    'gui_Callback',   []);
 if nargin && ischar(varargin{1})
@@ -405,13 +405,13 @@ handles.paramChimera.String = tmp;
 % --- End of my functions --- %
 
 
-% --- Executes just before chimeraGUI is made visible.
-function chimeraGUI_OpeningFcn(hObject, eventdata, handles, varargin)
+% --- Executes just before chimeraGUI_linux is made visible.
+function chimeraGUI_linux_OpeningFcn(hObject, eventdata, handles, varargin)
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-% varargin   command line arguments to chimeraGUI (see VARARGIN)
+% varargin   command line arguments to chimeraGUI_linux (see VARARGIN)
 
 handles.axPreview.Box = 'on';
 
@@ -442,18 +442,18 @@ cmap_logo(handles.axLogo);
 
 update_figure(hObject, handles);
 
-% Choose default command line output for chimeraGUI
+% Choose default command line output for chimeraGUI_linux
 handles.output = hObject;
 
 % Update handles structure
 guidata(hObject, handles);
 
-% UIWAIT makes chimeraGUI wait for user response (see UIRESUME)
+% UIWAIT makes chimeraGUI_linux wait for user response (see UIRESUME)
 % uiwait(handles.figChimera);
 
 
 % --- Outputs from this function are returned to the command line.
-function varargout = chimeraGUI_OutputFcn(hObject, eventdata, handles) 
+function varargout = chimeraGUI_linux_OutputFcn(hObject, eventdata, handles) 
 % varargout  cell array for returning output args (see VARARGOUT);
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -1018,7 +1018,7 @@ function butChimeraOpts_Callback(hObject, eventdata, handles)
 % hObject    handle to butChimeraOpts (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-handles.winParams = winParams(handles.winParams);
+handles.winParams = winParams_linux(handles.winParams);
 update_figure(hObject, handles);
 
 
