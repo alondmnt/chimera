@@ -1,5 +1,5 @@
-function [mapseq, B] = calc_cmap_posspec1(key, SA, refAA, refNT, win_params)
-% [mapseq, B] = calc_cmap_posspec1(key, SA, refAA, refNT, max_dist, win_params.center)
+function [mapseq, B] = calc_cmap_posspec(key, SA, refAA, refNT, win_params)
+% [mapseq, B] = calc_cmap_posspec(key, SA, refAA, refNT, max_dist, win_params.center)
 %   compute the position-specific chimeraMap solution for a given key.
 %   unlike the original chimeraMap (Zur and Tuller, 2014), blocks are
 %   selected from windows in all reference sequences that are positioned
