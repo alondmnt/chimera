@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="2005892372" file="/tamir1/dalon/engineering/chimera/code/GUI/cMapApp_linux.prj" location="/tamir1/dalon/engineering/chimera/code/GUI" name="cMapApp_linux" preferred-package-location="/tamir1/dalon/engineering/chimera/code/GUI/cMapApp_win/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.standalone" target-name="Application Compiler">
+  <configuration build-checksum="1081778878" file="/tamir1/dalon/engineering/chimera/code/GUI/cMapApp_linux.prj" location="/tamir1/dalon/engineering/chimera/code/GUI" name="cMapApp_linux" preferred-package-location="/tamir1/dalon/engineering/chimera/code/GUI/cMapApp_linux/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.standalone" target-name="Application Compiler">
     <param.appname>cMapApp</param.appname>
     <param.icon>${PROJECT_ROOT}/cMapApp_resources/icon.ico</param.icon>
     <param.icons>
@@ -27,7 +27,6 @@
     <param.logdir>${PROJECT_ROOT}/cMapApp_linux</param.logdir>
     <param.enable.clean.build>false</param.enable.clean.build>
     <param.user.defined.mcr.options />
-    <param.embed.ctf>true</param.embed.ctf>
     <param.target.type>subtarget.standalone</param.target.type>
     <param.support.packages />
     <param.web.mcr>true</param.web.mcr>
@@ -39,6 +38,10 @@
     <param.windows.command.prompt>false</param.windows.command.prompt>
     <param.create.log>false</param.create.log>
     <param.log.file />
+    <param.native.matlab>false</param.native.matlab>
+    <param.checkbox>false</param.checkbox>
+    <param.example />
+    <param.help.text />
     <unset>
       <param.email />
       <param.company />
@@ -55,7 +58,6 @@
       <param.logdir />
       <param.enable.clean.build />
       <param.user.defined.mcr.options />
-      <param.embed.ctf />
       <param.target.type />
       <param.support.packages />
       <param.web.mcr />
@@ -67,6 +69,10 @@
       <param.windows.command.prompt />
       <param.create.log />
       <param.log.file />
+      <param.native.matlab />
+      <param.checkbox />
+      <param.example />
+      <param.help.text />
     </unset>
     <fileset.main>
       <file>${PROJECT_ROOT}/chimeraGUI_linux.m</file>
@@ -74,6 +80,9 @@
     <fileset.resources>
       <file>${PROJECT_ROOT}/cMapApp logo small.png</file>
       <file>${PROJECT_ROOT}/cMapApp logo.png</file>
+      <file>${PROJECT_ROOT}/chimeraGUI_linux.fig</file>
+      <file>${PROJECT_ROOT}/chimeraGUI_linux.m</file>
+      <file>${PROJECT_ROOT}/winParams_linux.fig</file>
     </fileset.resources>
     <fileset.package />
     <fileset.depfun>
@@ -81,30 +90,30 @@
       <file>${PROJECT_ROOT}/build_suffix_array.m</file>
       <file>${PROJECT_ROOT}/calc_cmap_posspec.m</file>
       <file>${PROJECT_ROOT}/calc_map.m</file>
-      <file>${PROJECT_ROOT}/chimeraGUI_linux.fig</file>
       <file>${PROJECT_ROOT}/cmap_logo.m</file>
       <file>${PROJECT_ROOT}/draw_win.m</file>
       <file>${PROJECT_ROOT}/longest_prefix.m</file>
       <file>${PROJECT_ROOT}/maximize_CUB.m</file>
       <file>${PROJECT_ROOT}/merge_arrays.mexa64</file>
       <file>${PROJECT_ROOT}/select_window.m</file>
-      <file>${PROJECT_ROOT}/winParams_linux.fig</file>
       <file>${PROJECT_ROOT}/winParams_linux.m</file>
     </fileset.depfun>
     <build-deliverables>
       <file location="${PROJECT_ROOT}/cMapApp_linux/for_testing" name="readme.txt" optional="true">/tamir1/dalon/engineering/chimera/code/GUI/cMapApp_linux/for_testing/readme.txt</file>
-      <file location="${PROJECT_ROOT}/cMapApp_linux/for_testing" name="run_cMapApp.sh" optional="false">/tamir1/dalon/engineering/chimera/code/GUI/cMapApp_linux/for_testing/run_cMapApp.sh</file>
-      <file location="${PROJECT_ROOT}/cMapApp_linux/for_testing" name="splash.png" optional="false">/tamir1/dalon/engineering/chimera/code/GUI/cMapApp_linux/for_testing/splash.png</file>
       <file location="${PROJECT_ROOT}/cMapApp_linux/for_testing" name="cMapApp" optional="false">/tamir1/dalon/engineering/chimera/code/GUI/cMapApp_linux/for_testing/cMapApp</file>
+      <file location="${PROJECT_ROOT}/cMapApp_linux/for_testing" name="splash.png" optional="false">/tamir1/dalon/engineering/chimera/code/GUI/cMapApp_linux/for_testing/splash.png</file>
+      <file location="${PROJECT_ROOT}/cMapApp_linux/for_testing" name="run_cMapApp.sh" optional="false">/tamir1/dalon/engineering/chimera/code/GUI/cMapApp_linux/for_testing/run_cMapApp.sh</file>
     </build-deliverables>
     <workflow />
     <matlab>
-      <root>/usr/local.cc/lib64/matlabr2016b</root>
+      <root>/usr/local.cc/lib64/matlabr2017b</root>
       <toolboxes>
         <toolbox name="fixedpoint" />
         <toolbox name="matlabcoder" />
         <toolbox name="matlabhdlcoder" />
         <toolbox name="embeddedcoder" />
+        <toolbox name="gpucoder" />
+        <toolbox name="polyspacebugfinder" />
       </toolboxes>
       <toolbox>
         <fixedpoint>
@@ -125,6 +134,16 @@
         <embeddedcoder>
           <enabled>true</enabled>
         </embeddedcoder>
+      </toolbox>
+      <toolbox>
+        <gpucoder>
+          <enabled>true</enabled>
+        </gpucoder>
+      </toolbox>
+      <toolbox>
+        <polyspacebugfinder>
+          <enabled>true</enabled>
+        </polyspacebugfinder>
       </toolbox>
     </matlab>
     <platform>
