@@ -1,10 +1,15 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="3068896611" file="/tamir1/dalon/engineering/chimera/code/GUI/cMapApp.prj" location="/tamir1/dalon/engineering/chimera/code/GUI" name="cMapApp" preferred-package-location="/tamir1/dalon/engineering/chimera/code/GUI/cMapApp/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.standalone" target-name="Application Compiler">
+  <configuration build-checksum="3511529707" file="/Users/dalon/Documents/Study/PhD/Projects/_backup/engineering/chimera/GUI/cMapApp.prj" location="/Users/dalon/Documents/Study/PhD/Projects/_backup/engineering/chimera/GUI" name="cMapApp" preferred-package-location="/Users/dalon/Documents/Study/PhD/Projects/_backup/engineering/chimera/GUI/cMapApp/for_redistribution" preferred-package-type="package.type.app" target="target.ezdeploy.standalone" target-name="Application Compiler">
     <param.appname>cMapApp</param.appname>
-    <param.icon />
-    <param.icons />
+    <param.icon>${PROJECT_ROOT}/cMapApp_resources/icon.icns</param.icon>
+    <param.icons>
+      <file>${PROJECT_ROOT}/cMapApp_resources/icon_48.png</file>
+      <file>${PROJECT_ROOT}/cMapApp_resources/icon_32.png</file>
+      <file>${PROJECT_ROOT}/cMapApp_resources/icon_24.png</file>
+      <file>${PROJECT_ROOT}/cMapApp_resources/icon_16.png</file>
+    </param.icons>
     <param.version>0.9</param.version>
-    <param.authnamewatermark>Alon Diament</param.authnamewatermark>
+    <param.authnamewatermark>Tuller Lab / Alon Diament</param.authnamewatermark>
     <param.email />
     <param.company />
     <param.summary />
@@ -12,9 +17,22 @@
     <param.screenshot>${PROJECT_ROOT}/cMapApp logo.png</param.screenshot>
     <param.guid />
     <param.installpath.string>/cMapApp/</param.installpath.string>
-    <param.installpath.combo>option.installpath.user</param.installpath.combo>
+    <param.installpath.combo>option.installpath.systemwideapp</param.installpath.combo>
     <param.logo />
-    <param.install.notes />
+    <param.install.notes>In the following directions, replace MCR_ROOT by the directory where the MATLAB Runtime is installed on the target machine.
+
+If the environment variable DYLD_LIBRARY_PATH is undefined, set it to the concatenation of the following strings:
+
+    MCR_ROOT/v90/runtime/maci64:
+    MCR_ROOT/v90/sys/os/maci64:
+    MCR_ROOT/v90/bin/maci64
+
+If it is defined, set it to the concatenation of these strings:
+
+    ${LD_LIBRARY_PATH}: 
+    MCR_ROOT/v90/runtime/maci64:
+    MCR_ROOT/v90/sys/os/maci64:
+    MCR_ROOT/v90/bin/maci64</param.install.notes>
     <param.target.install.notes />
     <param.intermediate>${PROJECT_ROOT}/cMapApp/for_testing</param.intermediate>
     <param.files.only>${PROJECT_ROOT}/cMapApp/for_redistribution_files_only</param.files.only>
@@ -32,15 +50,13 @@
     <param.web.mcr>true</param.web.mcr>
     <param.package.mcr>false</param.package.mcr>
     <param.no.mcr>false</param.no.mcr>
-    <param.web.mcr.name>cMapApp_install</param.web.mcr.name>
+    <param.web.mcr.name>MyAppInstaller_web</param.web.mcr.name>
     <param.package.mcr.name>MyAppInstaller_mcr</param.package.mcr.name>
     <param.no.mcr.name>MyAppInstaller_app</param.no.mcr.name>
     <param.windows.command.prompt>false</param.windows.command.prompt>
     <param.create.log>false</param.create.log>
     <param.log.file />
     <unset>
-      <param.icon />
-      <param.icons />
       <param.email />
       <param.company />
       <param.summary />
@@ -61,6 +77,7 @@
       <param.web.mcr />
       <param.package.mcr />
       <param.no.mcr />
+      <param.web.mcr.name />
       <param.package.mcr.name />
       <param.no.mcr.name />
       <param.windows.command.prompt />
@@ -68,7 +85,7 @@
       <param.log.file />
     </unset>
     <fileset.main>
-      <file>${PROJECT_ROOT}/chimeraGUI.m</file>
+      <file>${PROJECT_ROOT}/chimeraGUI_macOS.m</file>
     </fileset.main>
     <fileset.resources>
       <file>${PROJECT_ROOT}/cMapApp logo small.png</file>
@@ -76,21 +93,29 @@
     </fileset.resources>
     <fileset.package />
     <fileset.depfun>
-      <file>/tamir1/dalon/engineering/chimera/code/binary_search.m</file>
-      <file>/tamir1/dalon/engineering/chimera/code/build_suffix_array.m</file>
-      <file>/tamir1/dalon/engineering/chimera/code/calc_map.m</file>
-      <file>/tamir1/dalon/engineering/chimera/code/longest_prefix.m</file>
-      <file>/tamir1/dalon/engineering/chimera/code/merge_arrays.mexa64</file>
+      <file>${PROJECT_ROOT}/binary_search.m</file>
+      <file>${PROJECT_ROOT}/build_suffix_array.m</file>
+      <file>${PROJECT_ROOT}/calc_cmap_posspec.m</file>
+      <file>${PROJECT_ROOT}/calc_map.m</file>
+      <file>${PROJECT_ROOT}/chimeraGUI_macOS.fig</file>
+      <file>${PROJECT_ROOT}/cmap_logo.m</file>
+      <file>${PROJECT_ROOT}/draw_win.m</file>
+      <file>${PROJECT_ROOT}/longest_prefix.m</file>
+      <file>${PROJECT_ROOT}/maximize_CUB.m</file>
+      <file>${PROJECT_ROOT}/merge_arrays.mexmaci64</file>
+      <file>${PROJECT_ROOT}/select_window.m</file>
+      <file>${PROJECT_ROOT}/winParams_macOS.fig</file>
+      <file>${PROJECT_ROOT}/winParams_macOS.m</file>
     </fileset.depfun>
     <build-deliverables>
-      <file location="${PROJECT_ROOT}/cMapApp/for_testing" name="readme.txt" optional="true">/tamir1/dalon/engineering/chimera/code/GUI/cMapApp/for_testing/readme.txt</file>
-      <file location="${PROJECT_ROOT}/cMapApp/for_testing" name="splash.png" optional="false">/tamir1/dalon/engineering/chimera/code/GUI/cMapApp/for_testing/splash.png</file>
-      <file location="${PROJECT_ROOT}/cMapApp/for_testing" name="cMapApp" optional="false">/tamir1/dalon/engineering/chimera/code/GUI/cMapApp/for_testing/cMapApp</file>
-      <file location="${PROJECT_ROOT}/cMapApp/for_testing" name="run_cMapApp.sh" optional="false">/tamir1/dalon/engineering/chimera/code/GUI/cMapApp/for_testing/run_cMapApp.sh</file>
+      <file location="${PROJECT_ROOT}/cMapApp/for_testing" name="cMapApp.app" optional="false">/Users/dalon/Documents/Study/PhD/Projects/_backup/engineering/chimera/GUI/cMapApp/for_testing/cMapApp.app</file>
+      <file location="${PROJECT_ROOT}/cMapApp/for_testing" name="readme.txt" optional="true">/Users/dalon/Documents/Study/PhD/Projects/_backup/engineering/chimera/GUI/cMapApp/for_testing/readme.txt</file>
+      <file location="${PROJECT_ROOT}/cMapApp/for_testing" name="run_cMapApp.sh" optional="false">/Users/dalon/Documents/Study/PhD/Projects/_backup/engineering/chimera/GUI/cMapApp/for_testing/run_cMapApp.sh</file>
+      <file location="${PROJECT_ROOT}/cMapApp/for_testing" name="splash.png" optional="false">/Users/dalon/Documents/Study/PhD/Projects/_backup/engineering/chimera/GUI/cMapApp/for_testing/splash.png</file>
     </build-deliverables>
     <workflow />
     <matlab>
-      <root>/usr/local.cc/lib64/matlabr2015b</root>
+      <root>/Applications/MATLAB_R2015b.app</root>
       <toolboxes>
         <toolbox name="matlabhdlcoder" />
         <toolbox name="fixedpoint" />
@@ -120,17 +145,17 @@
     </matlab>
     <platform>
       <unix>true</unix>
-      <mac>false</mac>
+      <mac>true</mac>
       <windows>false</windows>
       <win2k>false</win2k>
       <winxp>false</winxp>
       <vista>false</vista>
-      <linux>true</linux>
+      <linux>false</linux>
       <solaris>false</solaris>
-      <osver>3.10.0-514.2.2.el7.x86_64</osver>
+      <osver>10.12.6</osver>
       <os32>false</os32>
       <os64>true</os64>
-      <arch>glnxa64</arch>
+      <arch>maci64</arch>
       <matlab>true</matlab>
     </platform>
   </configuration>
