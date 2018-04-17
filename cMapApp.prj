@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="3511529707" file="/Users/dalon/Documents/Study/PhD/Projects/_backup/engineering/chimera/GUI/cMapApp.prj" location="/Users/dalon/Documents/Study/PhD/Projects/_backup/engineering/chimera/GUI" name="cMapApp" preferred-package-location="/Users/dalon/Documents/Study/PhD/Projects/_backup/engineering/chimera/GUI/cMapApp/for_redistribution" preferred-package-type="package.type.app" target="target.ezdeploy.standalone" target-name="Application Compiler">
+  <configuration build-checksum="3239721883" file="/Users/dalon/Documents/Study/PhD/Projects/_backup/engineering/chimera/GUI/cMapApp.prj" location="/Users/dalon/Documents/Study/PhD/Projects/_backup/engineering/chimera/GUI" name="cMapApp" preferred-package-location="/Users/dalon/Documents/Study/PhD/Projects/_backup/engineering/chimera/GUI/cMapApp/for_redistribution" preferred-package-type="package.type.app" target="target.ezdeploy.standalone" target-name="Application Compiler">
     <param.appname>cMapApp</param.appname>
     <param.icon>${PROJECT_ROOT}/cMapApp_resources/icon.icns</param.icon>
     <param.icons>
