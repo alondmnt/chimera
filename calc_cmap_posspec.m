@@ -1,25 +1,16 @@
 function [mapseq, B] = calc_cmap_posspec(key, SA, refAA, refNT, win_params)
-% [mapseq, B] = calc_cmap_posspec(key, SA, refAA, refNT, max_dist, win_params.center)
+% [mapseq, B] = CALC_CMAP_POSSPEC(key, SA, refAA, refNT, win_params)
 %   compute the position-specific chimeraMap solution for a given key.
 %   unlike the original chimeraMap (Zur and Tuller, 2014), blocks are
 %   selected from windows in all reference sequences that are positioned
-%   relative to ORF start/stop.
-%   unlike the position-specific cMap version 2.0, blocks must START
-%   and END within the defined window.
-%   in practice, this is done by filtering the SA and truncating suffixes.
-%   also, windows are defined symmetrically around [win_params.center].
+%   at the same distance (as in the target gene [key]) from ORF start/stop.
 %
 % Alon Diament / Tuller Lab, January 2018.
 
-% generate a SA with coordinates measured from the STOP codon (for win
-% selection)
-% lens = cellfun(@length, refAA);
-% SA(:, end+1) = SA(:, 1) - lens(SA(:, 2)) - 1;  % equals -1 at end of seq
-
 if ~isstruct(win_params)
     % assuming win_params is the size of the window
-    win_params = struct('size', win_params, 'center', win_params/2, ...
-                        'by_start', true, 'by_stop', true, 'truncate_seq', true);
+    win_params = struct('size', win_params, 'center', 0, ...
+                        'by_start', true, 'by_stop', true, 'truncate_seq', false);
 end
 
 n = length(key);

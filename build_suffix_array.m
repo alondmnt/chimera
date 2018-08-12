@@ -4,6 +4,7 @@ function SA = build_suffix_array(S, unique_SA)
 %  1st column: suffix start index in the string
 %  2nd column: string ID (when given multiple strings in cell array [S])
 %  3rd column: suffix frequency in given reference [S]
+%  4th column: suffix start index relative to END of string
 %  run setup.m to compile the required MEX file.
 %
 % Alon Diament, June 2015.
@@ -12,6 +13,7 @@ function SA = build_suffix_array(S, unique_SA)
 % 09/09/15: using MEX-file implementation to greatly reduce memory load.
 %           calling merge_arrays() hierarchically (merge-sort style),
 %           to speed things up.
+% 01/2018:  4th column added.
 
 %% INPUT OPTIONS
 

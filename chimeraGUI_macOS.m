@@ -1,28 +1,28 @@
 function varargout = chimeraGUI_macOS(varargin)
-% CHIMERAGUI MATLAB code for chimeraGUI_macOS.fig
-%      CHIMERAGUI, by itself, creates a new CHIMERAGUI or raises the existing
+% CHIMERAGUI_MACOS MATLAB code for chimeraGUI_macOS.fig
+%      CHIMERAGUI_MACOS, by itself, creates a new CHIMERAGUI_MACOS or raises the existing
 %      singleton*.
 %
-%      H = CHIMERAGUI returns the handle to a new CHIMERAGUI or the handle to
+%      H = CHIMERAGUI_MACOS returns the handle to a new CHIMERAGUI_MACOS or the handle to
 %      the existing singleton*.
 %
-%      CHIMERAGUI('CALLBACK',hObject,eventData,handles,...) calls the local
-%      function named CALLBACK in CHIMERAGUI.M with the given input arguments.
+%      CHIMERAGUI_MACOS('CALLBACK',hObject,eventData,handles,...) calls the local
+%      function named CALLBACK in CHIMERAGUI_MACOS.M with the given input arguments.
 %
-%      CHIMERAGUI('Property','Value',...) creates a new CHIMERAGUI or raises the
+%      CHIMERAGUI_MACOS('Property','Value',...) creates a new CHIMERAGUI_MACOS or raises the
 %      existing singleton*.  Starting from the left, property value pairs are
-%      applied to the GUI before chimeraGUI_OpeningFcn gets called.  An
+%      applied to the GUI before chimeraGUI_macOS_OpeningFcn gets called.  An
 %      unrecognized property name or invalid value makes property application
-%      stop.  All inputs are passed to chimeraGUI_OpeningFcn via varargin.
+%      stop.  All inputs are passed to chimeraGUI_macOS_OpeningFcn via varargin.
 %
 %      *See GUI Options on GUIDE's Tools menu.  Choose "GUI allows only one
 %      instance to run (singleton)".
 %
 % See also: GUIDE, GUIDATA, GUIHANDLES
 
-% Edit the above text to modify the response to help chimeraGUI
+% Edit the above text to modify the response to help chimeraGUI_macOS
 
-% Last Modified by GUIDE v2.5 16-Apr-2018 23:54:04
+% Last Modified by GUIDE v2.5 12-Aug-2018 13:04:23
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -294,44 +294,70 @@ guidata(hObject, handles);
 
 
 function handles = update_status(handles)
-% this functions determines whether all prequisites for the optimization
+% this functions determines whether all prerequisites for the optimization
 % are met (and signals the user whether data is missing).
-is_ready = true;
+is_ready_2map = true;
+is_ready_2ars = true;
 handles.statTarget.Visible = 'off';
 handles.statReference.Visible = 'off';
 handles.statRegionFile.Visible = 'off';
 handles.statRegionSel.Visible = 'off';
 handles.optNT.ForegroundColor = [0, 0, 0];
 handles.optNT.FontWeight = 'normal';
+handles.statMap.String = '';
+handles.statARS.String = '';
 
 
 if (handles.target_exist || handles.default_exist) && ~isempty(handles.target_seq)
 %     handles.statTarget.String = 'OK';
 else
-    handles.statRun.String = 'target missing';
-    is_ready = false;
+    handles.statMap.String = 'target missing';
+    is_ready_2map = false;
+    is_ready_2ars = false;
     handles.statTarget.Visible = 'on';
 end
 
 is_default_req = ~all(cellfun(@isempty, handles.default_regions));
 if is_default_req && ~handles.default_exist
-    if is_ready
-        handles.statRun.String = 'default NT seq missing';
+    if is_ready_2map
+        handles.statMap.String = 'default NT seq missing';
         handles.statTarget.Visible = 'on';
         handles.optNT.ForegroundColor = handles.statTarget.ForegroundColor;
         handles.optNT.FontWeight = 'bold';
     end
-    is_ready = false;
+    is_ready_2map = false;
 end
 
 if handles.reference_exist
-%     handles.statReference.String = 'OK';  % sprintf('OK: %d', length(handles.reference_seq));
+    if ~strcmpi(handles.reference_type, 'NT') && is_ready_2map
+        handles.statMap.String = 'NT reference needed';
+        is_ready_2map = false;
+        % can still calc cARS
+    end
+%     if handles.target_exist  % TODO: REMOVE
+%         repres_AA = ismember(handles.target_AA_alpha, handles.reference_AA_alpha);
+%         if strcmpi(handles.target_type, 'NT') && strcmpi(handles.reference_type, 'NT')
+%             repres_NT = ismember(handles.target_NT_alpha, handles.reference_NT_alpha);
+%         else
+%             repres_NT = true;
+%         end
+%         if ~all(repres_AA) && is_ready_2map
+%             handles.statMap.String = 'target not covered by ref';
+%             is_ready_2map = false;
+%             is_ready_2ars = false;
+%         end
+%         if (~all(repres_AA) || ~all(repres_NT)) && is_ready_2ars
+%             handles.statARS.String = 'target not covered by ref';
+%             is_ready_2ars = false;
+%         end
+%     end
 else
-    if is_ready
-        handles.statRun.String = 'reference missing';
+    if is_ready_2map || is_ready_2ars
+        handles.statMap.String = 'reference missing';
         handles.statReference.Visible = 'on';
     end
-    is_ready = false;
+    is_ready_2map = false;
+    is_ready_2ars = false;
 end
 
 if length(handles.target_seq) > 1
@@ -351,8 +377,8 @@ handles.butCodonRemRegion.Enable = region_editing;
 if ~all(cellfun(@length, {handles.chimera_regions, ...
                           handles.codon_regions, ...
                           handles.default_regions}) == length(handles.target_seq))
-    if is_ready
-%         handles.statRun.String = 'regions file missing';
+    if is_ready_2map
+%         handles.statMap.String = 'regions file missing';
         handles.statRegionFile.Visible = 'on';
     end
 %     is_ready = false;
@@ -360,28 +386,52 @@ end
 
 if any(cellfun(@(x, y) isempty(x) & isempty(y), ...
                handles.chimera_regions, handles.codon_regions))
-    if is_ready
-        handles.statRun.String = 'regions missing';
+    if is_ready_2map
+        handles.statMap.String = 'regions missing';
         handles.statRegionSel.Visible = 'on';
     end
-    is_ready = false;
+    is_ready_2map = false;
 end
 
-if is_ready
-    handles.statRun.String = 'ready';
-    handles.butRun.Enable = 'on';
+if any(cellfun(@isempty, handles.chimera_regions))
+    if is_ready_2ars
+        handles.statARS.String = 'no chimera region';
+        handles.statRegionSel.Visible = 'on';
+    end
+    is_ready_2ars = false;
+end
+
+if handles.during_ars && is_ready_2map
+    handles.statMap.String = 'cARS is on';
+    is_ready_2map = false;
+end
+if handles.during_map && is_ready_2ars
+    handles.statARS.String = 'cMap is on';
+    is_ready_2ars = false;
+end
+
+if is_ready_2map
+    handles.statMap.String = 'ready';
+    handles.butMap.Enable = 'on';
 else
-    handles.butRun.Enable = 'off';
+    handles.butMap.Enable = 'off';
+end
+
+if is_ready_2ars
+    handles.statARS.String = 'ready';
+    handles.butARS.Enable = 'on';
+else
+    handles.butARS.Enable = 'off';
 end
 
 if handles.target_exist
     n_seq = length(handles.target_seq);
     if n_seq > 1
         handles.fileTarget.String = sprintf('%s: [%d %s seqs]', handles.target_file, ...
-            n_seq, handles.seq_type);
+            n_seq, handles.target_type);
     else
         handles.fileTarget.String = sprintf('%s: [%s seq] %s', handles.target_file, ...
-            handles.seq_type, handles.target_name{1});
+            handles.target_type, handles.target_name{1});
     end
 else
     handles.fileTarget.String = '';
@@ -402,16 +452,109 @@ if handles.winParams.by_stop
 end
 handles.paramChimera.String = tmp;
 
+
+function [seq_res, len_res, iref] = is_target_in_ref(handles, alphabet)
+% DEPRECATED. see: filter_target_from_ref()
+assert(ischar(alphabet), 'alphabet must be a string');
+alphabet = upper(alphabet);
+
+len_res = false;
+seq_res = false;
+iref = find(strcmp(handles.target_name{1}, handles.reference_name));
+
+for i = 1:length(iref)
+    switch alphabet
+        case 'AA'
+            len_res(i) = length(handles.target_seq{1}) == length(handles.reference_aa{iref(i)});
+            seq_res(i) = strcmpi(handles.target_seq{1}, handles.reference_aa{iref(i)});
+
+        case 'NT'
+            if strcmpi(handles.target_type, 'NT')
+                tlen = length(handles.default_seq{1});
+                tseq = handles.default_seq{1};
+            else
+                tlen = 3*length(handles.target_seq{1});
+                tseq = 'z';
+            end
+            
+            if strcmpi(handles.reference_type, 'NT')
+                rlen = length(handles.reference_seq{iref(i)});
+                rseq = handles.reference_seq{iref(i)};
+            else
+                rlen = 3*length(handles.reference_aa{iref(i)});
+                rseq = 'x';  % different from tseq
+            end
+
+            len_res(i) = rlen == tlen;
+            seq_res(i) = strcmpi(rseq, tseq);
+
+        otherwise
+            error('unknown alphabet type');
+    end
+end
+
+
+function [filtered, handles] = filter_target_from_ref(handles, ctarg, cref)
+% using the suffix array to search the reference for sequences identical
+% to the target.
+% accepts handles containing the suffix array (containing redundant,
+% non-unique suffixes in field [SA]) and optionally an action to take
+% (field [filt_action]), the target sequence, and the refrence set.
+
+handles.SA(:, 3) = 1;  % reset all suffix frequencies to 1 (assuming non-unique SA)
+handles.filt_SA = handles.SA;
+filtered = 0;
+prompt_user = ~isfield(handles, 'filt_action');
+if ~prompt_user && strcmpi(handles.filt_action, 'ignore')
+    return
+end
+
+while strcmp(longest_prefix(ctarg, handles.filt_SA, cref), ctarg)
+    filtered = filtered + 1;
+    if prompt_user
+        handles.filt_action = questdlg('some target sequences appear in the reference' , ...
+                          'target in reference', 'filter from ref', ...
+                          'skip target', 'ignore', 'filter from ref');
+    end
+
+    switch handles.filt_action
+        case 'filter from ref'
+            % find which ref to remove
+            [~, iSA] = longest_prefix(ctarg, handles.filt_SA, cref);
+            iref = handles.filt_SA(iSA, 2);  % seq index
+            handles.filt_SA(handles.filt_SA(:, 2) == iref, :) = [];  % suffixes removed, for regular cARS
+            handles.SA(handles.SA(:, 2) == iref, 3) = 0; 
+            % set freq to 0 to remove from pos-spec cARS/cMap reference.
+            % this workaround is required to keep the sorted indices in
+            % columns 5-6 stable.
+            handles.filt_msg = 'targets filtered from reference:';
+        case 'skip target'
+            handles.target_seq(1) = [];
+            handles.default_seq(1) = [];
+            handles.target_name(1) = [];
+            handles.chimera_regions(1) = [];
+            handles.codon_regions(1) = [];
+            handles.default_regions(1) = [];
+            handles.filt_msg = 'targets skipped:';
+            return
+        case 'ignore'
+            handles.filt_msg = 'targets ignored:';
+            return
+        otherwise
+            error('too many cooks!');
+    end
+end
+
 % --- End of my functions --- %
 
 
-% --- Executes just before chimeraGUI is made visible.
+% --- Executes just before chimeraGUI_macOS is made visible.
 function chimeraGUI_macOS_OpeningFcn(hObject, eventdata, handles, varargin)
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-% varargin   command line arguments to chimeraGUI (see VARARGIN)
+% varargin   command line arguments to chimeraGUI_macOS (see VARARGIN)
 
 handles.axPreview.Box = 'on';
 
@@ -436,19 +579,22 @@ handles.chimera_regions = {zeros(0, 2)};
 handles.codon_regions = {zeros(0, 2)};
 handles.default_regions = {zeros(0, 2)};
 
-handles.winParams = struct('size', 70, 'center', 35, 'by_start', 1, 'by_stop', 1, 'truncate_seq', 1);
+handles.during_ars = false;
+handles.during_map = false;
+
+handles.winParams = struct('size', 70, 'center', 0, 'by_start', 1, 'by_stop', 1, 'truncate_seq', 0);
 
 cmap_logo(handles.axLogo);
 
 update_figure(hObject, handles);
 
-% Choose default command line output for chimeraGUI
+% Choose default command line output for chimeraGUI_macOS
 handles.output = hObject;
 
 % Update handles structure
 guidata(hObject, handles);
 
-% UIWAIT makes chimeraGUI wait for user response (see UIRESUME)
+% UIWAIT makes chimeraGUI_macOS wait for user response (see UIRESUME)
 % uiwait(handles.figChimera);
 
 
@@ -476,19 +622,6 @@ for reg = handles.listChimera.Value
     handles.fieldChimeraTo.String = sprintf('%d', handles.chimera_regions{1}(reg, 2));
 end
 guidata(hObject, handles);
-
-
-% --- Executes during object creation, after setting all properties.
-function listChimera_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to listChimera (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: listbox controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
 
 
 % --- Executes on button press in butChimeraAddRegion.
@@ -533,9 +666,9 @@ end
 update_figure(hObject, handles);
 
 
-% --- Executes on button press in butRun.
-function butRun_Callback(hObject, eventdata, handles)
-% hObject    handle to butRun (see GCBO)
+% --- Executes on button press in butMap.
+function butMap_Callback(hObject, eventdata, handles)
+% hObject    handle to butMap (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
@@ -561,11 +694,16 @@ if handles.optSourceRef.Value
 end
 tic;
 
+handles.during_map = true;
+handles = update_figure(hObject, handles);
+
 ntarg = length(handles.target_seq);
+target_filter = {};
+cmap_names = handles.target_name;
 for t = 1:ntarg
     % 1. codons optimization
     do_codon = ~isempty(handles.codon_regions{1});
-    handles.statRun.String = sprintf('%d: codons optim', t); drawnow;
+    handles.statMap.String = sprintf('%d: codons optim', t); drawnow;
 
     if do_codon && handles.optSourceRef.Value
         if isempty(handles.CUB)
@@ -584,20 +722,31 @@ for t = 1:ntarg
 
     % 2. chimera optimization
     do_chimera = ~isempty(handles.chimera_regions{1});
-    if do_chimera && ~handles.SA_exist
-        handles.statRun.String = sprintf('%d: building index', t); drawnow;
-
-        handles.reference_aa = nt2aa(handles.reference_seq, 'AlternativeStartCodons', false);  % here false is good
-        lens = cellfun(@length, handles.reference_aa);
+    if do_chimera && ~(handles.SA_exist && strcmpi(handles.SA_type, 'AA'))
+        handles.statMap.String = sprintf('%d: building index', t); drawnow;
         handles.SA = build_suffix_array(handles.reference_aa, false);
-%         handles.SA(:, 3) = handles.SA(:, 1) - lens(handles.SA(:, 2)) - 1;  % equals -1 at end of seq
+        handles.SA_type = 'AA';
         handles.SA_exist = true;
     end
-    handles.statRun.String = sprintf('%d: chimera optim', t); drawnow;
+    handles.statMap.String = sprintf('%d: chimera optim', t); drawnow;
 
-    if do_chimera && (handles.winParams.size) == 0
+    % check if target is already in reference
+    [filtered, handles] = filter_target_from_ref(handles, handles.target_seq{1}, handles.reference_aa);
+    if filtered
+        switch handles.filt_action
+            case 'filter from ref'
+                target_filter{end+1} = sprintf('(%d) %s', t, cmap_names{t});
+                handles.statMap.String = sprintf('%d: chimera (filtered %d)', t, filtered); drawnow;
+            case 'skip target'
+                target_filter{end+1} = sprintf('(%d) %s', t, cmap_names{t});
+                handles = update_figure(hObject, handles);
+                continue
+        end
+    end
+
+    if do_chimera && (handles.winParams.size == 0)
         % not position specific
-        [chimera_seq, mblocks] = calc_map(handles.target_seq{1}, handles.SA, ...
+        [chimera_seq, mblocks] = calc_cmap(handles.target_seq{1}, handles.SA, ...
             handles.reference_aa, handles.reference_seq);
     elseif do_chimera
         [chimera_seq, mblocks] = calc_cmap_posspec(handles.target_seq{1}, handles.SA, ...
@@ -608,7 +757,7 @@ for t = 1:ntarg
     end
 
     % 3. complete construct from regions
-    handles.statRun.String = sprintf('%d: combining regions', t); drawnow;
+    handles.statMap.String = sprintf('%d: combining regions', t); drawnow;
 
     codon_region = region2set(handles.codon_regions{1});
     chim_region = region2set(handles.chimera_regions{1});
@@ -629,7 +778,7 @@ for t = 1:ntarg
 
     % generate a block table
     if ~profiling_run
-        handles.statRun.String = sprintf('%d: saving', t); drawnow;
+        handles.statMap.String = sprintf('%d: saving', t); drawnow;
         blocks = table(0, 0, {'init'}, {''}, 0, {''}, 'VariableNames', ...
             {'pos_s', 'pos_e', 'type', 'gene', 'gene_loc', 'block'});
         if do_chimera
@@ -688,29 +837,14 @@ end
 toc;
 % msgbox(sprintf('%d sequences optimized.', ntarg), 'optimization', 'modal');
 
-handles.statRun.String = 'done'; drawnow;
+handles = rmfield(handles, 'filt_action');
+handles.during_map = false;
 update_figure(hObject, handles);
 
-
-function fileTarget_Callback(hObject, eventdata, handles)
-% hObject    handle to fileTarget (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of fileTarget as text
-%        str2double(get(hObject,'String')) returns contents of fileTarget as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function fileTarget_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to fileTarget (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
+if ~isempty(target_filter)
+    listdlg('Name', 'target in reference', 'PromptString', handles.filt_msg, ...
+            'ListString', target_filter, 'SelectionMode', 'single', ...
+            'CancelString', 'Cool');
 end
 
 
@@ -736,11 +870,11 @@ end
 n_seq = length(seqs);
 
 aa_alphabet = '*ACDEFGHIKLMNPQRSTVWY';
+nt_alphabet = 'ACGTU';
 for s = 1:n_seq
     valid_aa = ismember(upper(seqs(s).Sequence), aa_alphabet);
-    nt_alphabet = 'ACGTU';
     valid_nt = ismember(upper(seqs(s).Sequence), nt_alphabet);
-    
+
     if handles.optAA.Value && ~all(valid_aa)
         errordlg(sprintf('protein %s sequence contains illegal AA chars ("%s"). \nexpecting an amino acid sequence.', ...
             seqs(s).Header, unique(seqs(s).Sequence(~valid_aa))), 'target seq', 'modal');
@@ -772,10 +906,13 @@ end
 handles.target_seq = {};
 handles.default_seq = {};
 handles.target_name = {};
-ignored_len = {};
-ignored_stop = {};
+handles.target_NT_alpha = '';  % for alphabet assertion
+handles.target_AA_alpha = '';
+valid_len = [];
+discard_stop = {};
 added_stop = {};
 for s = 1:n_seq
+    seqs(s).Sequence = upper(seqs(s).Sequence);
     switch seq_type
         case 'AA'
             handles.optAA.Value = 1;
@@ -784,61 +921,70 @@ for s = 1:n_seq
                 if ~exist('stop_decis', 'var')
                     stop_decis = questdlg('AA sequence is missing a STOP codon.', ...
                                           sprintf('%s STOP codon', seqs(s).Header), ...
-                                          'add STOP', 'ignore', 'add STOP');
+                                          'add STOP', 'ignore', 'discard', 'add STOP');
                 end
                 if strcmp(stop_decis, 'add STOP')
                     seqs(s).Sequence(end+1) = '*';
                     added_stop{end+1} = seqs(s).Header;
-                else
-                    ignored_stop{end+1} = seqs(s).Header;
+                elseif strcmp(stop_decis, 'discard')
+                    discard_stop{end+1} = seqs(s).Header;
                     continue
                 end
             end
-            handles.target_seq{end+1} = upper(seqs(s).Sequence);
+            handles.target_seq{end+1} = seqs(s).Sequence;
             handles.default_seq{end+1} = '';
             handles.target_name{end+1} = seqs(s).Header;
             handles.default_exist = false;
+            valid_len = [valid_len; true];
         case 'NT'
-            if mod(length(seqs(s).Sequence), 3) > 0
-                ignored_len{end+1} = seqs(s).Header;
-                continue
-            end
+            seqs(s).Sequence = strrep(seqs(s).Sequence, 'U', 'T');
             if nt2aa(seqs(s).Sequence(end-2:end)) ~= '*'
                 if ~exist('stop_decis', 'var')
                     stop_decis = questdlg('NT sequence is missing a STOP codon.', ...
                                           sprintf('%s stop codon', seqs(s).Header), ...
-                                          'add STOP', 'ignore', 'add STOP');
+                                          'add STOP', 'ignore', 'discard', 'add STOP');
                 end
                 if strcmp(stop_decis, 'add STOP')
-                    seqs(s).Sequence(end+1:end+3) = aa2nt('*');
+                    seqs(s).Sequence(end+1:end+3) = aa2nt('*');  % random STOP
                     added_stop{end+1} = seqs(s).Header;
-                else
-                    ignored_stop{end+1} = seqs(s).Header;
+                elseif strcmp(stop_decis, 'discard')
+                    discard_stop{end+1} = seqs(s).Header;
                     continue
                 end
             end
             handles.optNT.Value = 1;
             handles.optAA.Value = 0;
-            handles.default_seq{end+1} = upper(seqs(s).Sequence);
+            handles.default_seq{end+1} = seqs(s).Sequence;
             handles.target_seq{end+1} = nt2aa(handles.default_seq{end}, ...
                                               'AlternativeStartCodons', true);
             % NOTE: here we allow alternative starts so that the given
             %       target is translated correctly.
             handles.target_name{end+1} = seqs(s).Header;
             handles.default_exist = true;
+            valid_len = [valid_len; mod(length(seqs(s).Sequence), 3) == 0];
         otherwise
             error('too many cooks!');
     end
+    handles.target_AA_alpha = union(handles.target_AA_alpha, handles.target_seq{end});
+    handles.target_NT_alpha = union(handles.target_NT_alpha, handles.default_seq{end});
 end
 
-if ~isempty(ignored_len)
-    warndlg(sprintf('%d targets not divisible by 3 (ignored): \n%s', ...
-                    length(ignored_len), strjoin(ignored_len, '\n')), ...
-            'target protein length', 'modal');
+if ~all(valid_len)
+    [sel, decision] = listdlg('ListString', handles.target_name(~valid_len), ...
+                              'Name', 'invalid length', 'ListSize', [450, 300], ...
+                              'InitialValue', 1:sum(~valid_len), ...
+                              'OKString', 'discard selected', 'CancelString', 'ignore warning', ...
+                              'PromptString', 'the following seqs have lengths not divisible by 3.');
+    if decision == 1  % 'discard selected'
+        invalid_len = find(~valid_len);
+        handles.default_seq(invalid_len(sel)) = [];
+        handles.target_seq(invalid_len(sel)) = [];
+        handles.target_name(invalid_len(sel)) = [];
+    end
 end
-if ~isempty(ignored_stop)
-    warndlg(sprintf('%d targets missing a STOP codon (ignored): \n%s', ...
-                    length(ignored_stop), strjoin(ignored_stop, '\n')), ...
+if ~isempty(discard_stop)
+    warndlg(sprintf('%d targets missing a STOP codon (discarded): \n%s', ...
+                    length(discard_stop), strjoin(discard_stop, '\n')), ...
             'target protein STOP', 'modal');
 end
 if ~isempty(added_stop)
@@ -846,8 +992,22 @@ if ~isempty(added_stop)
                     length(added_stop), strjoin(added_stop, '\n')), ...
             'target protein STOP', 'modal');
 end
+if handles.reference_exist
+    repres = ismember(handles.target_AA_alpha, handles.reference_AA_alpha);
+    if ~all(repres)
+        warndlg(sprintf('%d letters in the target AA alphabet are missing from the reference alphabet: \n%s', ...
+                        sum(~repres), handles.target_AA_alpha(~repres)), 'AA alphabet assertion');
+    end
+    if strcmpi(seq_type, 'NT') && strcmpi(handles.reference_type, 'NT')
+        repres = ismember(handles.target_NT_alpha, handles.reference_NT_alpha);
+        if ~all(repres)
+            warndlg(sprintf('%d letters in the target NT alphabet are missing from the reference alphabet: \n%s', ...
+                            sum(~repres), handles.target_NT_alpha(~repres)), 'NT alphabet assertion');
+        end
+    end
+end
 
-handles.seq_type = seq_type;
+handles.target_type = seq_type;
 handles.target_file = fname;
 handles.target_exist = true;
 if n_seq > 1
@@ -875,28 +1035,6 @@ if ~ismember(upper(eventdata.Character), alphabet)
 end
 
 
-function fileReference_Callback(hObject, eventdata, handles)
-% hObject    handle to fileReference (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of fileReference as text
-%        str2double(get(hObject,'String')) returns contents of fileReference as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function fileReference_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to fileReference (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
 % --- Executes on button press in butReference.
 function butReference_Callback(hObject, eventdata, handles)
 % hObject    handle to butReference (see GCBO)
@@ -909,23 +1047,36 @@ end
 seqs = fastaread(fullfile(dirname, fname));
 
 nt_alphabet = 'ACGTU';
+aa_alphabet = '*ACDEFGHIKLMNPQRSTVWY';
+if handles.optRefNT.Value
+    alphabet = nt_alphabet;
+elseif handles.optRefAA.Value
+    alphabet = aa_alphabet;
+else
+    error('too many cooks!');
+end
 valid_seq = true(length(seqs), 1);
 valid_len = true(length(seqs), 1);
 for i = 1:length(seqs)
-    valid_seq(i) = all(ismember(upper(seqs(i).Sequence), nt_alphabet));
+    seqs(i).Sequence = upper(seqs(i).Sequence);
+    valid_seq(i) = all(ismember(seqs(i).Sequence, alphabet));
     valid_len(i) = mod(length(seqs(i).Sequence), 3) == 0;
-    seqs(i).Sequence = strrep(upper(seqs(i).Sequence), 'U', 'T');
+    if handles.optRefNT.Value
+        seqs(i).Sequence = strrep(seqs(i).Sequence, 'U', 'T');
+        seqs(i).aa_seq = nt2aa(seqs(i).Sequence, 'AlternativeStartCodons', false);  % here false is good
+        % we will need the AA seq soon for alphabet assertion
+    end
 end
 
 if ~all(valid_seq)
     listdlg('ListString', {seqs(~valid_seq).Header}, 'Name', 'invalid seqs', ...
             'ListSize', [450, 300], ...
-            'PromptString', 'the following seqs contain invalid chars and will be discarded.');
+            'PromptString', 'the following seqs contain invalid letters and will be discarded.');
 end
 seqs = seqs(valid_seq);
 valid_len = valid_len(valid_seq);
 
-if ~all(valid_len)
+if ~all(valid_len) && handles.optRefNT.Value
     [sel, decision] = listdlg('ListString', {seqs(~valid_len).Header}, ...
                               'Name', 'invalid length', 'ListSize', [450, 300], ...
                               'InitialValue', 1:sum(~valid_len), ...
@@ -937,13 +1088,50 @@ if ~all(valid_len)
     end
 end
 
-handles.reference_seq = {seqs.Sequence}';
+handles.reference_NT_alpha = '';
+handles.reference_AA_alpha = '';
+for i = 1:length(seqs)
+    if handles.optRefNT.Value
+        handles.reference_NT_alpha = union(handles.reference_NT_alpha, seqs(i).Sequence);
+        handles.reference_AA_alpha = union(handles.reference_AA_alpha, seqs(i).aa_seq);
+    else
+        handles.reference_AA_alpha = union(handles.reference_AA_alpha, seqs(i).Sequence);
+    end
+end
+if handles.target_exist
+    repres = ismember(handles.target_AA_alpha, handles.reference_AA_alpha);
+    if ~all(repres)
+        errordlg(sprintf('%d letters in the target AA alphabet are missing from the reference alphabet: \n%s', ...
+                         sum(~repres), handles.target_AA_alpha(~repres)), 'AA alphabet assertion');
+        return
+    end
+    if strcmpi(handles.target_type, 'NT') && handles.optRefNT.Value
+        repres = ismember(handles.target_NT_alpha, handles.reference_NT_alpha);
+        if ~all(repres)
+            errordlg(sprintf('%d letters in the target NT alphabet are missing from the reference alphabet: \n%s', ...
+                             sum(~repres), handles.target_NT_alpha(~repres)), 'NT alphabet assertion');
+            return
+        end
+    end
+end
+
+if handles.optRefNT.Value
+    handles.reference_type = 'NT';
+    handles.reference_seq = {seqs.Sequence}';
+    handles.reference_aa = {seqs.aa_seq}';
+    n_seq = length(handles.reference_seq);
+else
+    handles.reference_type = 'AA';
+    handles.reference_seq = {};
+    handles.reference_aa = {seqs.Sequence}';
+    n_seq = length(handles.reference_aa);
+end
 handles.reference_name = {seqs.Header}';
 handles.reference_file = fname;
-handles.fileReference.String = sprintf('%s: %d seqs', handles.reference_file, length(handles.reference_seq));
+handles.fileReference.String = sprintf('%s: [%d %s seqs]', handles.reference_file, n_seq, handles.reference_type);
 handles.SA = zeros(0, 3);
 
-if ~isempty(handles.reference_seq)
+if ~isempty(handles.reference_seq) || ~isempty(handles.reference_aa)
     handles.reference_exist = true;
 else
     handles.reference_exist = false;
@@ -968,26 +1156,6 @@ end
 guidata(hObject, handles);
 
 
-% --- Executes during object creation, after setting all properties.
-function listCodon_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to listCodon (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: listbox controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-% --- Executes on button press in pushbutton5.
-function pushbutton5_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbutton5 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-
 % --- Executes on button press in butChimeraRemRegion.
 function butChimeraRemRegion_Callback(hObject, eventdata, handles)
 % hObject    handle to butChimeraRemRegion (see GCBO)
@@ -1006,72 +1174,6 @@ if err == 0
 end
 
 update_figure(hObject, handles);
-
-
-function fieldChimeraFrom_Callback(hObject, eventdata, handles)
-% hObject    handle to fieldChimeraFrom (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of fieldChimeraFrom as text
-%        str2double(get(hObject,'String')) returns contents of fieldChimeraFrom as a double
-
-% --- Executes during object creation, after setting all properties.
-function fieldChimeraFrom_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to fieldChimeraFrom (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-function fieldChimeraTo_Callback(hObject, eventdata, handles)
-% hObject    handle to fieldChimeraTo (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of fieldChimeraTo as text
-%        str2double(get(hObject,'String')) returns contents of fieldChimeraTo as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function fieldChimeraTo_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to fieldChimeraTo (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-% --- Executes on selection change in listDefault.
-function listDefault_Callback(hObject, eventdata, handles)
-% hObject    handle to listDefault (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns listDefault contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from listDefault
-
-
-% --- Executes during object creation, after setting all properties.
-function listDefault_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to listDefault (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: listbox controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
 
 
 % --- Executes on button press in optSourceRef.
@@ -1156,50 +1258,6 @@ end
 update_figure(hObject, handles);
 
 
-function fieldCodonFrom_Callback(hObject, eventdata, handles)
-% hObject    handle to fieldCodonFrom (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of fieldCodonFrom as text
-%        str2double(get(hObject,'String')) returns contents of fieldCodonFrom as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function fieldCodonFrom_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to fieldCodonFrom (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-function fieldCodonTo_Callback(hObject, eventdata, handles)
-% hObject    handle to fieldCodonTo (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of fieldCodonTo as text
-%        str2double(get(hObject,'String')) returns contents of fieldCodonTo as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function fieldCodonTo_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to fieldCodonTo (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
 % --- Executes on button press in butChimeraOpts.
 function butChimeraOpts_Callback(hObject, eventdata, handles)
 % hObject    handle to butChimeraOpts (see GCBO)
@@ -1207,66 +1265,6 @@ function butChimeraOpts_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 handles.winParams = winParams_macOS(handles.winParams);
 update_figure(hObject, handles);
-
-
-% --- Executes during object creation, after setting all properties.
-function textStat_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to textStat (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-
-% --- Executes during object creation, after setting all properties.
-function axPreview_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to axPreview (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: place code in OpeningFcn to populate axPreview
-
-
-% --- Executes on key press with focus on fileTarget and none of its controls.
-function fileTarget_KeyPressFcn(hObject, eventdata, handles)
-% hObject    handle to fileTarget (see GCBO)
-% eventdata  structure with the following fields (see MATLAB.UI.CONTROL.UICONTROL)
-%	Key: name of the key that was pressed, in lower case
-%	Character: character interpretation of the key(s) that was pressed
-%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
-% handles    structure with handles and user data (see GUIDATA)
-if handles.target_exist
-    n_seq = length(handles.target_seq);
-    if n_seq > 1
-        handles.fileTarget.String = sprintf('%s: [%d %s seqs]', handles.target_file, ...
-            n_seq, handles.seq_type);
-    else
-        handles.fileTarget.String = sprintf('%s: [%s seq] %s', handles.target_file, ...
-            handles.seq_type, handles.target_name{1});
-    end
-else
-    handles.fileTarget.String = '';
-end
-
-
-function fileRegions_Callback(hObject, eventdata, handles)
-% hObject    handle to fileRegions (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of fileRegions as text
-%        str2double(get(hObject,'String')) returns contents of fileRegions as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function fileRegions_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to fileRegions (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
 
 
 % --- Executes on button press in butRegions.
@@ -1346,15 +1344,6 @@ function fileDefault_KeyPressFcn(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 nt_alphabet = 'ACGTU';
 check_text(eventdata, nt_alphabet);
-
-
-% --- Executes during object creation, after setting all properties.
-function axLogo_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to axLogo (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: place code in OpeningFcn to populate axLogo
 
 
 % --- Executes on button press in optSourceTable.
@@ -1440,69 +1429,169 @@ handles.optAA.Value = 1;
 handles.optNT.Value = 0;
 
 
-% --- Executes on key press with focus on fileReference and none of its controls.
-function fileReference_KeyPressFcn(hObject, eventdata, handles)
-% hObject    handle to fileReference (see GCBO)
-% eventdata  structure with the following fields (see MATLAB.UI.CONTROL.UICONTROL)
-%	Key: name of the key that was pressed, in lower case
-%	Character: character interpretation of the key(s) that was pressed
-%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% --- Executes on button press in butARS.
+function butARS_Callback(hObject, eventdata, handles)
+% hObject    handle to butARS (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-if handles.reference_exist
-    handles.fileReference.String = sprintf('%s: %d seqs', handles.reference_file, length(handles.reference_seq));
+
+% 0. select output file
+profiling_run = false;
+[fname, dirname] = uiputfile({'*.csv', 'comma separated values'}, 'select output file');
+if fname == 0
+    return
+elseif strcmp(fname, 'profiling.csv')
+    profiling_run = true;
+end
+[~, fname, extent] = fileparts(fname);
+if isempty(extent)
+    extent = '.csv';
+end
+outfile = fullfile(dirname, fname);
+outmain = strcat(outfile, extent);
+fid = fopen(outmain, 'w');
+outreport = strcat(outfile, '_summary', extent);
+tic;
+
+handles.during_ars = true;
+handles = update_figure(hObject, handles);
+handles.statARS.String = 'building index'; drawnow;
+
+if strcmpi(handles.reference_type, 'AA') || strcmpi(handles.target_type, 'AA')
+    ars_type = 'AA';
+else
+    % NT may be converted to AA
+    ars_type = {'NT', 'AA'};
+end
+if iscell(ars_type)
+    ars_type = questdlg('select an alphabet for Chimera ARS', 'cARS', ...
+                        ars_type{:}, ars_type{1});
+end
+switch ars_type
+    case 'AA'
+        cars_ref = handles.reference_aa;
+        if handles.SA_exist && strcmpi(ars_type, handles.SA_type)
+            % pass
+        else
+            handles.SA = build_suffix_array(handles.reference_aa, false);
+            handles.SA_type = 'AA';  % this SA is also relevant for cMap
+            handles.SA_exist = true;
+        end
+    case 'NT'
+        cars_ref = handles.reference_seq;
+        if handles.SA_exist && strcmpi(ars_type, handles.SA_type)
+            % pass
+        else
+            handles.SA = build_suffix_array(handles.reference_seq, false);
+            handles.SA_type = 'NT';  % this SA is NOT relevant for cMap
+            handles.SA_exist = true;
+        end
+    otherwise
+        error('too many cooks!');
+end
+assert(strcmpi(handles.SA_type, ars_type));
+
+ntarg = length(handles.target_seq);
+cars_score = nan(ntarg, 1);
+cars_score_reg = nan(ntarg, 1);
+cars_names = handles.target_name;
+target_filter = {};
+for t = 1:ntarg
+    % chimera ARS
+    do_chimera = ~isempty(handles.chimera_regions{1});
+    if ~do_chimera
+        error('no chimera region defined.');
+    end
+
+    handles.statARS.String = sprintf('target %d', t); drawnow;
+
+    chim_region = double(region2set(handles.chimera_regions{1}));
+    if strcmpi(ars_type, 'AA')
+        cars_targ = handles.target_seq{1};
+    elseif strcmpi(ars_type, 'NT')
+        cars_targ = handles.default_seq{1};
+        chim_region = bsxfun(@minus, 3*chim_region, [2; 1; 0]);
+        chim_region = chim_region(:);
+    else
+        error('too many cooks!');
+    end
+
+    % check if target is already in reference
+    [filtered, handles] = filter_target_from_ref(handles, cars_targ, cars_ref);
+    if filtered
+        switch handles.filt_action
+            case 'filter from ref'
+                target_filter{end+1} = sprintf('(%d) %s', t, cars_names{t});
+                handles.statARS.String = sprintf('target %d (filtered %d)', t, filtered); drawnow;
+            case 'skip target'
+                target_filter{end+1} = sprintf('(%d) %s', t, cars_names{t});
+                handles = update_figure(hObject, handles);
+                continue
+        end
+    end
+
+    if handles.winParams.size == 0
+        % not position specific, using the filtered filt_SA
+        [cars_score(t), cars_vec] = calc_cars(cars_targ, ...
+            handles.filt_SA, cars_ref);
+    else
+        % using SA with marked suffixes to ignore
+        [cars_score(t), cars_vec] = calc_cars_posspec(cars_targ, ...
+            handles.SA, cars_ref, handles.winParams);
+    end
+
+    cars_vec = cars_vec(chim_region);
+    cars_score_reg(t) = mean(cars_vec);
+
+    if ~profiling_run
+        cars_str = strjoin(arrayfun(@(x) {int2str(x)}, cars_vec), ',');
+        fprintf(fid, ...
+                sprintf('%s,%s\n', handles.target_name{1}, cars_str));
+    end
+
+    handles.target_seq(1) = [];
+    handles.default_seq(1) = [];
+    handles.target_name(1) = [];
+    handles.chimera_regions(1) = [];
+    handles.codon_regions(1) = [];
+    handles.default_regions(1) = [];
+    handles = update_figure(hObject, handles);
+end
+fclose(fid);
+
+% final table
+if ~profiling_run
+    T = table(cars_score, cars_score_reg, ...
+              'VariableNames', {'cARS_total', 'cARS_region'}, ...
+              'RowNames', cars_names);
+    writetable(T, outreport, 'WriteRowNames', true);
+end
+toc;
+
+handles = rmfield(handles, 'filt_action');
+handles.during_ars = false;
+update_figure(hObject, handles);
+
+if ~isempty(target_filter)
+    listdlg('Name', 'target in reference', 'PromptString', handles.filt_msg, ...
+            'ListString', target_filter, 'SelectionMode', 'single', ...
+            'CancelString', 'Cool');
 end
 
 
-% --- If Enable == 'on', executes on mouse press in 5 pixel border.
-% --- Otherwise, executes on mouse press in 5 pixel border or over butCodonAddRegion.
-function butCodonAddRegion_ButtonDownFcn(hObject, eventdata, handles)
-% hObject    handle to butCodonAddRegion (see GCBO)
+% --- Executes on button press in optRefNT.
+function optRefNT_Callback(hObject, eventdata, handles)
+% hObject    handle to optRefNT (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+handles.optRefNT.Value = 1;
+handles.optRefAA.Value = 0;
 
 
-% --- If Enable == 'on', executes on mouse press in 5 pixel border.
-% --- Otherwise, executes on mouse press in 5 pixel border or over butCodonAddRegion.
-function butChimeraAddRegion_ButtonDownFcn(hObject, eventdata, handles)
-% hObject    handle to butCodonAddRegion (see GCBO)
+% --- Executes on button press in optRefAA.
+function optRefAA_Callback(hObject, eventdata, handles)
+% hObject    handle to optRefAA (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
-
-% --- Executes during object creation, after setting all properties.
-function figChimera_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to figChimera (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-
-% --- Executes during object creation, after setting all properties.
-function butReference_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to butReference (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-
-% --- Executes during object creation, after setting all properties.
-function butRegions_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to butRegions (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-
-% --- If Enable == 'on', executes on mouse press in 5 pixel border.
-% --- Otherwise, executes on mouse press in 5 pixel border or over fileTarget.
-function fileTarget_ButtonDownFcn(hObject, eventdata, handles)
-% hObject    handle to fileTarget (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-
-% --- Executes on key press with focus on fileRegions and none of its controls.
-function fileRegions_KeyPressFcn(hObject, eventdata, handles)
-% hObject    handle to fileRegions (see GCBO)
-% eventdata  structure with the following fields (see MATLAB.UI.CONTROL.UICONTROL)
-%	Key: name of the key that was pressed, in lower case
-%	Character: character interpretation of the key(s) that was pressed
-%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
-% handles    structure with handles and user data (see GUIDATA)
+handles.optRefAA.Value = 1;
+handles.optRefNT.Value = 0;

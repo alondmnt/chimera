@@ -1,6 +1,7 @@
-function [mapseq, B] = calc_map(key, SA, refAA, refNT)
-%mapseq = CALC_MAP(key, SA, refAA, refNT)
+function [mapseq, B] = calc_cmap(key, SA, refAA, refNT)
+% [mapseq, B] = CALC_CMAP(key, SA, refAA, refNT)
 %  compute the ChimeraMap (Zur and Tuller 2014) solution for a given key.
+%  an optimized implementation.
 %
 % Alon Diament, July 2015.
 
@@ -54,30 +55,5 @@ freq = diff(iu);
 MF = all_blocks{mostfreq}; % first in lexicographic order
 gene = SA(iSA(mostfreq), 2);
 loc = SA(iSA(mostfreq), 1);
-
-if 0 % using Hadas's hashmaps (slightly slower)
-    seqMap = java.util.HashMap;
-    idMap = java.util.HashMap;
-    for i = 1:nB
-        seq = all_blocks{i};
-        if isempty(seqMap.get(seq))
-            seqMap.put(seq, 1);
-            idMap.put(seq, iSA(i));
-        else
-            seqMap.put(seq, seqMap.get(seq)+1);
-            arr = idMap.get(seq);
-            arr(end+1, 1) = iSA(i);
-            idMap.put(seq, arr);
-        end
-    end
-    
-    freqs = cell2mat(seqMap.values.toArray.cell);
-    [~, I] = max(freqs);
-    seqs = seqMap.keySet.toArray.cell;
-    MF = seqs{I};
-    ind = idMap.get(MF);
-    gene = SA(ind, 2);
-    loc = SA(ind, 1);
-end
 
 end
