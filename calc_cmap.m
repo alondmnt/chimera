@@ -32,6 +32,8 @@ nP = length(pref) - 1;
 [~, left] = binary_search(pref, SA, refAA);
 [~, right] = binary_search([pref, '~'], SA, refAA);
 iSA = left : right - 1;
+iSA(~SA(iSA, 3)) = [];  % 16/08/18: masking suffixes with 0 frequency
+iSA(SA(iSA, 1) + nP > cellfun(@length, refAA(SA(iSA, 2)))) = [];  % 16/08/18: rudimentary check
 
 if length(iSA) <= 1
     gene = SA(left, 2);

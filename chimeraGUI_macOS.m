@@ -45,6 +45,12 @@ end
 
 
 % --- All my functions are here --- %
+function x = get_i0(x, i)
+% ~immitates python 0-indexing
+
+x = x(mod(i, length(x)) + 1);
+
+
 function handles = update_figure(hObject, handles)
 handles = update_regions(handles);
 handles = update_bar(handles);
@@ -502,31 +508,30 @@ function [filtered, handles] = filter_target_from_ref(handles, ctarg, cref)
 % (field [filt_action]), the target sequence, and the refrence set.
 
 handles.SA(:, 3) = 1;  % reset all suffix frequencies to 1 (assuming non-unique SA)
-handles.filt_SA = handles.SA;
 filtered = 0;
 prompt_user = ~isfield(handles, 'filt_action');
 if ~prompt_user && strcmpi(handles.filt_action, 'ignore')
     return
 end
 
-while strcmp(longest_prefix(ctarg, handles.filt_SA, cref), ctarg)
+while strcmp(longest_prefix(ctarg, handles.SA, cref), ctarg)
     filtered = filtered + 1;
     if prompt_user
         handles.filt_action = questdlg('some target sequences appear in the reference' , ...
                           'target in reference', 'filter from ref', ...
                           'skip target', 'ignore', 'filter from ref');
+        prompt_user = false;
     end
 
     switch handles.filt_action
         case 'filter from ref'
             % find which ref to remove
-            [~, iSA] = longest_prefix(ctarg, handles.filt_SA, cref);
-            iref = handles.filt_SA(iSA, 2);  % seq index
-            handles.filt_SA(handles.filt_SA(:, 2) == iref, :) = [];  % suffixes removed, for regular cARS
+            [~, iSA] = longest_prefix(ctarg, handles.SA, cref);
+            iref = handles.SA(iSA, 2);  % seq index
             handles.SA(handles.SA(:, 2) == iref, 3) = 0; 
             % set freq to 0 to remove from pos-spec cARS/cMap reference.
-            % this workaround is required to keep the sorted indices in
-            % columns 5-6 stable.
+            % this is more efficient than copy/slicing and is required to
+            % keep the sorted indices in columns 5-6 stable.
             handles.filt_msg = 'targets filtered from reference:';
         case 'skip target'
             handles.target_seq(1) = [];
@@ -699,7 +704,7 @@ handles = update_figure(hObject, handles);
 
 ntarg = length(handles.target_seq);
 target_filter = {};
-cmap_names = handles.target_name;
+cmap_names = cellfun(@(x) get_i0(strsplit(strrep(x, ',', ';'), ' '), 0), handles.target_name);
 for t = 1:ntarg
     % 1. codons optimization
     do_codon = ~isempty(handles.codon_regions{1});
@@ -713,6 +718,8 @@ for t = 1:ntarg
         end
     elseif do_codon && handles.optSourceTable.Value && isempty(handles.CUB)
         errordlg('missing a codon table', 'codon optimization', 'modal');
+        handles.during_map = false;
+        update_figure(hObject, handles);
         return
     elseif do_codon
         codon_seq = maximize_CUB(handles.target_seq{1}, handles.CUB);
@@ -731,14 +738,20 @@ for t = 1:ntarg
     handles.statMap.String = sprintf('%d: chimera optim', t); drawnow;
 
     % check if target is already in reference
-    [filtered, handles] = filter_target_from_ref(handles, handles.target_seq{1}, handles.reference_aa);
+    if handles.default_exist
+        [filtered, handles] = filter_target_from_ref(handles, ...
+                                                nt2aa(handles.default_seq{1}, 'AlternativeStartCodons', false), ...
+                                                handles.reference_aa);
+    else
+        [filtered, handles] = filter_target_from_ref(handles, handles.target_seq{1}, handles.reference_aa);
+    end
     if filtered
         switch handles.filt_action
             case 'filter from ref'
-                target_filter{end+1} = sprintf('(%d) %s', t, cmap_names{t});
+                target_filter{end+1} = sprintf('%05d: %s (filtered %d)', t, cmap_names{t}, filtered);
                 handles.statMap.String = sprintf('%d: chimera (filtered %d)', t, filtered); drawnow;
             case 'skip target'
-                target_filter{end+1} = sprintf('(%d) %s', t, cmap_names{t});
+                target_filter{end+1} = sprintf('%05d: %s', t, cmap_names{t});
                 handles = update_figure(hObject, handles);
                 continue
         end
@@ -765,7 +778,7 @@ for t = 1:ntarg
     assert(isempty(intersect(codon_region, chim_region)) && ...
         isempty(intersect(codon_region, def_region)) && ...
         isempty(intersect(chim_region, def_region)), 'overlapping regions')
-    
+
     seq_bank = {codon_seq, chimera_seq, handles.default_seq{1}};
     seq_source = [];
     seq_source(codon_region) = 1;
@@ -795,7 +808,7 @@ for t = 1:ntarg
                 end
             end
             mblocks(erase, :) = [];
-            mblocks.gene = cellfun(@(x) handles.reference_name(x), mblocks.gene);
+            mblocks.gene = cellfun(@(x) get_i0(strsplit(strrep(handles.reference_name{x}, ',', ';'), ' '), 0), mblocks.gene);
             mblocks.type = repelem({'cMap'}, height(mblocks), 1);
             blocks = outerjoin(blocks, mblocks, 'MergeKeys', true);
         end
@@ -817,10 +830,10 @@ for t = 1:ntarg
             blocks = outerjoin(blocks, dblocks, 'MergeKeys', true);
         end
         blocks(1, :) = [];
-        
-        writetable(blocks, sprintf('%s_%s.csv', outfile, handles.target_name{1}))
+
+        writetable(blocks, sprintf('%s_%s.csv', outfile, cmap_names{t}))
         fastawrite(outfasta, ...
-            sprintf('%s optimized by cMapApp', handles.target_name{1}), final_seq);
+            sprintf('%s optimized by ChimeraMap', handles.target_name{1}), final_seq);
     end
 
     handles.target_seq(1) = [];
@@ -837,7 +850,9 @@ end
 toc;
 % msgbox(sprintf('%d sequences optimized.', ntarg), 'optimization', 'modal');
 
-handles = rmfield(handles, 'filt_action');
+if isfield(handles, 'filt_action')
+    handles = rmfield(handles, 'filt_action');
+end
 handles.during_map = false;
 update_figure(hObject, handles);
 
@@ -857,11 +872,17 @@ function butTarget_Callback(hObject, eventdata, handles)
 if fname == 0
     return
 end
-seqs = fastaread(fullfile(dirname, fname));
+try
+    seqs = fastaread(fullfile(dirname, fname));
+catch
+    errordlg('invalid file: %s', fullfile(dirname, fname));
+end
 
 if length(seqs) > 1
-    [ind, ok] = listdlg('ListString', {seqs.Header}, 'Name', 'select a protein', ...
+    ls = arrayfun(@(x) {sprintf('%05d: %s', x, seqs(x).Header)}, 1:length(seqs));
+    [ind, ok] = listdlg('ListString', ls, 'Name', 'select a protein', ...
                         'ListSize', [450, 300], 'SelectionMode', 'multiple');
+    clear('ls');
     if ok == 0
         return
     end
@@ -921,7 +942,7 @@ for s = 1:n_seq
                 if ~exist('stop_decis', 'var')
                     stop_decis = questdlg('AA sequence is missing a STOP codon.', ...
                                           sprintf('%s STOP codon', seqs(s).Header), ...
-                                          'add STOP', 'ignore', 'discard', 'add STOP');
+                                          'add STOP', 'discard', 'ignore', 'add STOP');
                 end
                 if strcmp(stop_decis, 'add STOP')
                     seqs(s).Sequence(end+1) = '*';
@@ -942,7 +963,7 @@ for s = 1:n_seq
                 if ~exist('stop_decis', 'var')
                     stop_decis = questdlg('NT sequence is missing a STOP codon.', ...
                                           sprintf('%s stop codon', seqs(s).Header), ...
-                                          'add STOP', 'ignore', 'discard', 'add STOP');
+                                          'add STOP', 'discard', 'ignore', 'add STOP');
                 end
                 if strcmp(stop_decis, 'add STOP')
                     seqs(s).Sequence(end+1:end+3) = aa2nt('*');  % random STOP
@@ -983,14 +1004,16 @@ if ~all(valid_len)
     end
 end
 if ~isempty(discard_stop)
-    warndlg(sprintf('%d targets missing a STOP codon (discarded): \n%s', ...
-                    length(discard_stop), strjoin(discard_stop, '\n')), ...
-            'target protein STOP', 'modal');
+    listdlg('PromptString', sprintf('%d targets missing a STOP codon (discarded):', ...
+                                    length(discard_stop)), ...
+            'ListString', discard_stop, 'Name', 'target protein STOP', ...
+            'ListSize', [240, 300], 'SelectionMode', 'single', 'CancelString', 'Cool');
 end
 if ~isempty(added_stop)
-    warndlg(sprintf('%d targets missing a STOP codon (added): \n%s', ...
-                    length(added_stop), strjoin(added_stop, '\n')), ...
-            'target protein STOP', 'modal');
+    listdlg('PromptString', sprintf('%d targets missing a STOP codon (added): \n%s', ...
+                                    length(added_stop)), ...
+            'ListString', added_stop ,'Name', 'target protein STOP', ...
+            'ListSize', [240, 300], 'SelectionMode', 'single', 'CancelString', 'Cool');
 end
 if handles.reference_exist
     repres = ismember(handles.target_AA_alpha, handles.reference_AA_alpha);
@@ -1044,7 +1067,13 @@ function butReference_Callback(hObject, eventdata, handles)
 if fname == 0
     return
 end
-seqs = fastaread(fullfile(dirname, fname));
+
+handles.statMap.String = 'loading reference'; drawnow;
+try
+    seqs = fastaread(fullfile(dirname, fname));
+catch
+    errordlg('invalid file: %s', fullfile(dirname, fname));
+end
 
 nt_alphabet = 'ACGTU';
 aa_alphabet = '*ACDEFGHIKLMNPQRSTVWY';
@@ -1061,7 +1090,7 @@ for i = 1:length(seqs)
     seqs(i).Sequence = upper(seqs(i).Sequence);
     valid_seq(i) = all(ismember(seqs(i).Sequence, alphabet));
     valid_len(i) = mod(length(seqs(i).Sequence), 3) == 0;
-    if handles.optRefNT.Value
+    if handles.optRefNT.Value && valid_seq(i)
         seqs(i).Sequence = strrep(seqs(i).Sequence, 'U', 'T');
         seqs(i).aa_seq = nt2aa(seqs(i).Sequence, 'AlternativeStartCodons', false);  % here false is good
         % we will need the AA seq soon for alphabet assertion
@@ -1070,7 +1099,7 @@ end
 
 if ~all(valid_seq)
     listdlg('ListString', {seqs(~valid_seq).Header}, 'Name', 'invalid seqs', ...
-            'ListSize', [450, 300], ...
+            'ListSize', [450, 300], 'CancelString', 'Cool', ...
             'PromptString', 'the following seqs contain invalid letters and will be discarded.');
 end
 seqs = seqs(valid_seq);
@@ -1449,8 +1478,10 @@ if isempty(extent)
 end
 outfile = fullfile(dirname, fname);
 outmain = strcat(outfile, extent);
-fid = fopen(outmain, 'w');
+fmain = fopen(outmain, 'w');
 outreport = strcat(outfile, '_summary', extent);
+frep = fopen(outreport, 'w');
+fprintf(frep, 'target,cARS_total,cARS_region\n');
 tic;
 
 handles.during_ars = true;
@@ -1494,7 +1525,7 @@ assert(strcmpi(handles.SA_type, ars_type));
 ntarg = length(handles.target_seq);
 cars_score = nan(ntarg, 1);
 cars_score_reg = nan(ntarg, 1);
-cars_names = handles.target_name;
+cars_names = cellfun(@(x) get_i0(strsplit(strrep(x, ',', ';'), ' '), 0), handles.target_name);
 target_filter = {};
 for t = 1:ntarg
     % chimera ARS
@@ -1521,21 +1552,19 @@ for t = 1:ntarg
     if filtered
         switch handles.filt_action
             case 'filter from ref'
-                target_filter{end+1} = sprintf('(%d) %s', t, cars_names{t});
+                target_filter{end+1} = sprintf('%05d: %s (filtered %d)', t, cars_names{t}, filtered);
                 handles.statARS.String = sprintf('target %d (filtered %d)', t, filtered); drawnow;
             case 'skip target'
-                target_filter{end+1} = sprintf('(%d) %s', t, cars_names{t});
+                target_filter{end+1} = sprintf('%05d: %s', t, cars_names{t});
                 handles = update_figure(hObject, handles);
                 continue
         end
     end
 
     if handles.winParams.size == 0
-        % not position specific, using the filtered filt_SA
         [cars_score(t), cars_vec] = calc_cars(cars_targ, ...
-            handles.filt_SA, cars_ref);
+            handles.SA, cars_ref);
     else
-        % using SA with marked suffixes to ignore
         [cars_score(t), cars_vec] = calc_cars_posspec(cars_targ, ...
             handles.SA, cars_ref, handles.winParams);
     end
@@ -1545,8 +1574,8 @@ for t = 1:ntarg
 
     if ~profiling_run
         cars_str = strjoin(arrayfun(@(x) {int2str(x)}, cars_vec), ',');
-        fprintf(fid, ...
-                sprintf('%s,%s\n', handles.target_name{1}, cars_str));
+        fprintf(fmain, sprintf('%s,%s\n', cars_names{t}, cars_str));
+        fprintf(frep, sprintf('%s,%.4f,%.4f\n', cars_names{t}, cars_score(t), cars_score_reg(t)));
     end
 
     handles.target_seq(1) = [];
@@ -1557,18 +1586,13 @@ for t = 1:ntarg
     handles.default_regions(1) = [];
     handles = update_figure(hObject, handles);
 end
-fclose(fid);
-
-% final table
-if ~profiling_run
-    T = table(cars_score, cars_score_reg, ...
-              'VariableNames', {'cARS_total', 'cARS_region'}, ...
-              'RowNames', cars_names);
-    writetable(T, outreport, 'WriteRowNames', true);
-end
+fclose(fmain);
+fclose(frep);
 toc;
 
-handles = rmfield(handles, 'filt_action');
+if isfield(handles, 'filt_action')
+    handles = rmfield(handles, 'filt_action');
+end
 handles.during_ars = false;
 update_figure(hObject, handles);
 

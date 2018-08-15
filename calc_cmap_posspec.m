@@ -50,6 +50,8 @@ else
     % can happen at the end of SA
     iSA = left;
 end
+iSA(~SA(iSA, 3)) = [];  % 16/08/18: masking suffixes with 0 frequency
+iSA(SA(iSA, 1) + nP > cellfun(@length, refAA(SA(iSA, 2)))) = [];  % 16/08/18: rudimentary check
 
 % here we filter instead of truncating
 count = zeros(length(iSA), 1);

@@ -41,10 +41,8 @@ if win_params.by_stop
     win_params.win_stop = win_stop;
 end
 
-valid = valid & SA(:, 3) > 0;
-% 11/08/18: simple way to remove suffixes from reference by zeroing out
-% their "frequency" property (3rd column)
 SA = SA(valid, :);
+% SA(~SA(:, 3), :) = [];  % mask suffixes with 0 frequency (debug version)
 end
 
 

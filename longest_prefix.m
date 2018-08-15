@@ -8,15 +8,12 @@ function [pref, pind] = longest_prefix(key, SA, ref, win_params)
 %
 % changelog:
 %   January 2018: [win_params] used to truncate suffixes (for PScMap-1).
+%   August  2018: suffix masking.
 
 [exists, where] = binary_search(key, SA, ref);
-if exists
+if exists && (nargin < 4 || ~win_params.truncate_seq)
     pind = where;
-    if nargin < 4
-        pref = key;
-    else
-        pref = get_trunc_suffix(SA, ref, where, win_params);
-    end
+    pref = key;
     return;
 end
 
@@ -24,11 +21,12 @@ where = min(max(2, where), size(SA, 1));
 if nargin < 4 || ~win_params.truncate_seq
     % when suffixes aren't truncated, the two adjacent suffixes contain the
     % longest common prefix
-    neighbors = {ref{SA(where-1, 2)}(SA(where-1, 1) : end); ...
-                 ref{SA(where, 2)}(SA(where, 1) : end)};
+    where = get_neighbors(where, SA);
+    neighbors = arrayfun(@(x) {ref{SA(x, 2)}(SA(x, 1) : end)}, where);
     [n, pind] = max(cellfun(@(x) count_common(key, x), neighbors));
-    pind = where + pind - 2; % always return the first index that matched
+    pind = where(pind); % always return the first index that matched
     pref = key(1 : n);
+
 else
     [n, pind] = longest_trunc_prefix(key, SA, ref, where, win_params);
     pref = key(1 : n);
@@ -38,22 +36,23 @@ end
 
 
 function [n, pind] = longest_trunc_prefix(key, SA, ref, ind, win_params)
-i = 0;
 pind = ind;
 n = 0;
+iup = ind + 1;
+idown = ind;
 
 candidates_exist = true;
 while candidates_exist
-    % (SA(ind-1-i, LCP_IND) > n) || (SA(ind-1+i, LCP_IND) > n)
     % the main realization here is that we must continue to test neighbors
     % until the longest common prefix (LCP) between adjacent
     % (non-truncated) suffixes decreases below the longest truncated prefix
     % seen so far.
-    % we check the LCP of [ind-1-i] (new candidate) with [ind-i] (prev cand)
-    % and the LCP of [ind-1+i] (prev cand) with [ind+i] (new cand)
+    % the stop condition checks the LCP of [iup] (new candidate) with
+    % [pind] (current best) and the LCP of [pind] with [idown] (new
+    % candidate).
     candidates_exist = false;
 
-    iup = ind - 1 - i;
+    iup = mask_suffix(SA, iup-1, -1, 0, Inf);
     if (iup > 0) && (count_common(ref{SA(iup, 2)}(SA(iup, 1):end), ...
                                   ref{SA(pind, 2)}(SA(pind, 1):end)) >= n)
         candidates_exist = true;
@@ -64,7 +63,7 @@ while candidates_exist
         end
     end
 
-    idown = ind + i;
+    idown = mask_suffix(SA, idown+1, +1, -Inf, size(SA, 1)+1);
     if (idown <= size(SA, 1)) && (count_common(ref{SA(idown, 2)}(SA(idown, 1):end), ...
                                                ref{SA(pind, 2)}(SA(pind, 1):end)) >= n)
         candidates_exist = true;
@@ -74,10 +73,7 @@ while candidates_exist
             n = tn;
         end
     end
-    i = i + 1;
 end
-% fprintf('%d steps (selected %d)\n', i, pind - ind);
-
 end
 
 
@@ -118,4 +114,16 @@ c = find(s1(1:n) - s2(1:n), 1, 'first') - 1;
 if isempty(c)
     c = n;
 end
+end
+
+
+function neis = get_neighbors(loc, SA)
+% it would seem that in order for masking to work properly we need to
+% look both up (new) and down (legacy) the found suffix.
+
+lo = mask_suffix(SA, max(1, loc-1), -1, 1, Inf);  % next lower neighbor
+hi = mask_suffix(SA, min(size(SA, 1), loc+1), +1, -Inf, size(SA, 1));  % next upper neighbor
+
+neis = [lo, loc, hi];
+neis(~SA(neis, 3)) = [];
 end

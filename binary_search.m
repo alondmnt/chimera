@@ -10,38 +10,47 @@ function [exists, where] = binary_search(key, SA, ref)
 %
 % Alon Diament, July 2015.
 
+nS = size(SA, 1);
 low = 1;
-high = size(SA, 1);
+high = nS;
+i = 0;
 while low < high
+    i = i + 1;
     mid = floor((low + high) / 2);
-    
-    [~, idx] = sort({key, ref{SA(mid, 2)}(SA(mid, 1) : end)});
-    isGreater = idx(1) > idx(2);
-    if isGreater
-        low = mid + 1;
+    mid = mask_suffix(SA, mid, -1, low, Inf);
+
+    if is_greater(key, mid, SA, ref)
+        low = mask_suffix(SA, mid+1, +1, -Inf, high);
     else
-        high = mid;
+        high = mask_suffix(SA, mid, -1, low, Inf);
     end
 end
 where = low;
 
-if where == size(SA, 1)  % case: end of SA
-    [~, idx] = sort({key, ref{SA(end, 2)}(SA(end, 1) : end)});
-    isGreater = idx(1) > idx(2);
-    if isGreater
-        where = size(SA, 1) + 1;
-        exists = false;
-        return
+if where == 1
+    where = mask_suffix(SA, where, +1, -Inf, nS);
+elseif where == nS
+    where = mask_suffix(SA, where, -1, 1, Inf);
+end
+assert(SA(where, 3) > 0);
+
+if where == nS  % case: end of SA
+    if is_greater(key, where, SA, ref)
+        where = nS + 1;
     end
 end
-
-if where > size(SA, 1)
+if where > nS
     exists = false;
     return;
 end
-% low == high
-if strcmp(key, ref{SA(low, 2)}(SA(low, 1) : end))
+
+if strcmp(key, ref{SA(where, 2)}(SA(where, 1) : end))
     exists = true;
 else
     exists = false; % insert [key] before [where]
 end
+
+
+function res = is_greater(key, ind, SA, ref)
+[~, idx] = sort({key, ref{SA(ind, 2)}(SA(ind, 1) : end)});
+res = idx(1) > idx(2);
