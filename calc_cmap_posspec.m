@@ -16,12 +16,14 @@ end
 n = length(key);
 B = cell(n, 3); % blocks
 pos = 1; % position in key
+mask = SA(:, 3);  % masking by suffix frequency
 for blk = 1:n
-    [thisSA, win_params] = select_window(SA, win_params, pos, pos-n-1);
+    [SA, win_params] = select_window(SA, win_params, pos, pos-n-1);
+    SA(:, 3) = min(mask, SA(:, 3));
 
-    blockAA = longest_prefix(key(pos:end), thisSA, refAA, win_params);
+    blockAA = longest_prefix(key(pos:end), SA, refAA, win_params);
     assert(~isempty(blockAA))
-    [B{blk, 3}, B{blk, 1}, B{blk, 2}] = most_freq_prefix(blockAA, thisSA, refAA, refNT, win_params);
+    [B{blk, 3}, B{blk, 1}, B{blk, 2}] = most_freq_prefix(blockAA, SA, refAA, refNT, win_params);
     pos = pos + length(blockAA);
     if pos > n
         break;

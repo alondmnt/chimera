@@ -15,10 +15,12 @@ end
 
 n = length(key);
 cars_vec = zeros(1, n);
+mask = SA(:, 3);  % masking by suffix frequency
 for pos = 1:n
-    [thisSA, win_params] = select_window(SA, win_params, pos, pos-n-1);
+    [SA, win_params] = select_window(SA, win_params, pos, pos-n-1);
+    SA(:, 3) = min(mask, SA(:, 3));
 
-    substring = longest_prefix(key(pos:end), thisSA, ref, win_params);
+    substring = longest_prefix(key(pos:end), SA, ref, win_params);
     cars_vec(pos) = length(substring);
 end
 

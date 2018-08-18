@@ -9,7 +9,7 @@ WINSTOP_POS_BY_WIN_END = false;  % simulating the parllel job version
 do_binary = size(SA, 2) > 5;
 
 max_dist = win_params.size / 2;
-valid = false(size(SA, 1), 1);
+SA(:, 3) = 0;  % masking suffixes using 0 frequency
 
 if win_params.by_start
     win_start = [pos_start - max_dist + win_params.center, ...
@@ -17,9 +17,9 @@ if win_params.by_start
     win_start = ceil(win_start);  % handling odd numbers
 
     if ~do_binary
-        valid = valid | (win_start(1) <= SA(:, 1) & SA(:, 1) <= win_start(2));
+        SA((win_start(1) <= SA(:, 1) & SA(:, 1) <= win_start(2)), 3) = 1;
     else
-        valid(binary_search(SA, 1, 5, win_start(1), win_start(2))) = true;
+        SA(binary_search(SA, 1, 5, win_start(1), win_start(2)), 3) = 1;
     end
     win_params.win_start = win_start;
 end
@@ -34,14 +34,13 @@ if win_params.by_stop
     win_stop = ceil(win_stop);
 
     if ~do_binary
-        valid = valid | (win_stop(1) <= SA(:, 4) & SA(:, 4) <= win_stop(2));
+        SA((win_stop(1) <= SA(:, 4) & SA(:, 4) <= win_stop(2)), 3) = 1;
     else
-        valid(binary_search(SA, 4, 6, win_stop(1), win_stop(2))) = true;
+        SA(binary_search(SA, 4, 6, win_stop(1), win_stop(2)), 3) = 1;
     end
     win_params.win_stop = win_stop;
 end
 
-SA = SA(valid, :);
 % SA(~SA(:, 3), :) = [];  % mask suffixes with 0 frequency (debug version)
 end
 
