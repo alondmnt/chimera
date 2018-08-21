@@ -647,7 +647,7 @@ if err == 2
 elseif err == 1
     decision = questdlg('new region overlaps with an existing Chimera region' , ...
                         'region overlap', 'merge', 'cancel', 'cancel');
-    if strcmp(decision, 'cancel')
+    if ~strcmp(decision, 'merge')
         return
     end
 end
@@ -662,7 +662,7 @@ if err
         case 'keep chimera'
             handles.codon_regions{1} = trunc_old;
         otherwise
-            error('too many cooks!');
+            return
     end
 end
 
@@ -704,6 +704,7 @@ handles = update_figure(hObject, handles);
 
 ntarg = length(handles.target_seq);
 target_filter = {};
+target_error = {};
 cmap_names = cellfun(@(x) get_i0(strsplit(strrep(x, ',', ';'), ' '), 0), handles.target_name);
 for t = 1:ntarg
     % 1. codons optimization
@@ -759,14 +760,28 @@ for t = 1:ntarg
 
     if do_chimera && (handles.winParams.size == 0)
         % not position specific
-        [chimera_seq, mblocks] = calc_cmap(handles.target_seq{1}, handles.SA, ...
+        [chimera_seq, mblocks, err] = calc_cmap(handles.target_seq{1}, handles.SA, ...
             handles.reference_aa, handles.reference_seq);
     elseif do_chimera
-        [chimera_seq, mblocks] = calc_cmap_posspec(handles.target_seq{1}, handles.SA, ...
+        [chimera_seq, mblocks, err] = calc_cmap_posspec(handles.target_seq{1}, handles.SA, ...
             handles.reference_aa, handles.reference_seq, ...
             handles.winParams);
     else
         chimera_seq = '';
+    end
+
+    if any(err)
+        err_string = sprintf('%05d: %s', t, cmap_names{t});
+        if err(1)
+            err_string = sprintf('%s [empty block]', err_string);
+        end
+        if err(2)
+            err_string = sprintf('%s [empty window]', err_string);
+        end
+        if err(3)
+            err_string = sprintf('%s [peptide error]', err_string);
+        end
+        target_error{end+1} = err_string;
     end
 
     % 3. complete construct from regions
@@ -785,7 +800,9 @@ for t = 1:ntarg
     seq_source(chim_region) = 2;
     seq_source(def_region) = 3;
     final_seq = cellcat(arrayfun(@(x, y) {seq_bank{x}(3*(y-1)+1:3*y)}, seq_source, 1:length(seq_source)), 2);
-    assert(strcmp(nt2aa(final_seq, 'AlternativeStartCodons', true), handles.target_seq{1}), 'final seq error');
+    if ~do_chimera || ~any(err)
+        assert(strcmp(nt2aa(final_seq, 'AlternativeStartCodons', true), handles.target_seq{1}), 'final seq error');
+    end
     % NOTE: as long as we allow alternative starts in [default_seq], so do
     %       we need to allow it here
 
@@ -808,7 +825,9 @@ for t = 1:ntarg
                 end
             end
             mblocks(erase, :) = [];
-            mblocks.gene = cellfun(@(x) get_i0(strsplit(strrep(handles.reference_name{x}, ',', ';'), ' '), 0), mblocks.gene);
+            valid = ~cellfun(@isnan, mblocks.gene);
+            mblocks.gene(valid) = cellfun(@(x) get_i0(strsplit(strrep(handles.reference_name{x}, ',', ';'), ' '), 0), mblocks.gene(valid));
+            mblocks.gene(~valid) = {'NA'};
             mblocks.type = repelem({'cMap'}, height(mblocks), 1);
             blocks = outerjoin(blocks, mblocks, 'MergeKeys', true);
         end
@@ -859,7 +878,13 @@ update_figure(hObject, handles);
 if ~isempty(target_filter)
     listdlg('Name', 'target in reference', 'PromptString', handles.filt_msg, ...
             'ListString', target_filter, 'SelectionMode', 'single', ...
-            'CancelString', 'Cool');
+            'ListSize', [240, 300], 'CancelString', 'Cool');
+end
+if ~isempty(target_error)
+    listdlg('Name', 'cMap errors', 'PromptString', ...
+            'the following errors occured during optimization:', ...
+            'ListString', target_error, 'SelectionMode', 'single', ...
+            'ListSize', [240, 300], 'CancelString', 'Bummer');
 end
 
 
@@ -1243,7 +1268,7 @@ if err == 2
 elseif err == 1
     decision = questdlg('new region overlaps with an existing codon region' , ...
                         'region overlap', 'merge', 'cancel', 'cancel');
-    if strcmp(decision, 'cancel')
+    if ~strcmp(decision, 'merge')
         return
     end
 end
@@ -1258,7 +1283,7 @@ if err
         case 'keep codon'
             handles.chimera_regions{1} = trunc_old;
         otherwise
-            error('too many cooks!');
+            return
     end
 end
 
@@ -1518,7 +1543,7 @@ switch ars_type
             handles.SA_exist = true;
         end
     otherwise
-        error('too many cooks!');
+        return
 end
 assert(strcmpi(handles.SA_type, ars_type));
 
@@ -1527,6 +1552,7 @@ cars_score = nan(ntarg, 1);
 cars_score_reg = nan(ntarg, 1);
 cars_names = cellfun(@(x) get_i0(strsplit(strrep(x, ',', ';'), ' '), 0), handles.target_name);
 target_filter = {};
+target_error = {};
 for t = 1:ntarg
     % chimera ARS
     do_chimera = ~isempty(handles.chimera_regions{1});
@@ -1562,11 +1588,22 @@ for t = 1:ntarg
     end
 
     if handles.winParams.size == 0
-        [cars_score(t), cars_vec] = calc_cars(cars_targ, ...
+        [cars_score(t), cars_vec, err] = calc_cars(cars_targ, ...
             handles.SA, cars_ref);
     else
-        [cars_score(t), cars_vec] = calc_cars_posspec(cars_targ, ...
+        [cars_score(t), cars_vec, err] = calc_cars_posspec(cars_targ, ...
             handles.SA, cars_ref, handles.winParams);
+    end
+
+    if any(err)
+        err_string = sprintf('%05d: %s', t, cars_names{t});
+        if err(1)
+            err_string = sprintf('%s [empty substring]', err_string);
+        end
+        if err(2)
+            err_string = sprintf('%s [empty window]', err_string);
+        end
+        target_error{end+1} = err_string;
     end
 
     cars_vec = cars_vec(chim_region);
@@ -1599,7 +1636,13 @@ update_figure(hObject, handles);
 if ~isempty(target_filter)
     listdlg('Name', 'target in reference', 'PromptString', handles.filt_msg, ...
             'ListString', target_filter, 'SelectionMode', 'single', ...
-            'CancelString', 'Cool');
+            'ListSize', [240, 300], 'CancelString', 'Cool');
+end
+if ~isempty(target_error)
+    listdlg('Name', 'cARS errors', 'PromptString', ...
+            'the following errors occured during calculation:', ...
+            'ListString', target_error, 'SelectionMode', 'single', ...
+            'ListSize', [240, 300], 'CancelString', 'Bummer');
 end
 
 

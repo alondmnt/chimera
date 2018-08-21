@@ -10,14 +10,15 @@ function [pref, pind] = longest_prefix(key, SA, ref, win_params)
 %   January 2018: [win_params] used to truncate suffixes (for PScMap-1).
 %   August  2018: suffix masking.
 
-[exists, where] = binary_search(key, SA, ref);
-if exists && (nargin < 4 || ~win_params.truncate_seq)
-    pind = where;
-    pref = key;
-    return;
+where = binary_search(key, SA, ref);
+if ~SA(mask_suffix(SA, where, -1, 1, Inf), 3)  % (=where) unless end of SA then (=where-1)
+    assert(~sum(SA(:, 3)), 'too many cooks!');
+    pref = '';
+    pind = -1;
+    return
 end
+where = min(max(1, where), size(SA, 1));
 
-where = min(max(2, where), size(SA, 1));
 if nargin < 4 || ~win_params.truncate_seq
     % when suffixes aren't truncated, the two adjacent suffixes contain the
     % longest common prefix

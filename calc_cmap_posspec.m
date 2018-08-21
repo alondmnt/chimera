@@ -1,5 +1,5 @@
-function [mapseq, B] = calc_cmap_posspec(key, SA, refAA, refNT, win_params)
-% [mapseq, B] = CALC_CMAP_POSSPEC(key, SA, refAA, refNT, win_params)
+function [mapseq, B, err] = calc_cmap_posspec(key, SA, refAA, refNT, win_params)
+% [mapseq, B, err] = CALC_CMAP_POSSPEC(key, SA, refAA, refNT, win_params)
 %   compute the position-specific chimeraMap solution for a given key.
 %   unlike the original chimeraMap (Zur and Tuller, 2014), blocks are
 %   selected from windows in all reference sequences that are positioned
@@ -16,24 +16,41 @@ end
 n = length(key);
 B = cell(n, 3); % blocks
 pos = 1; % position in key
-mask = SA(:, 3);  % masking by suffix frequency
+mask = ~SA(:, 3);  % masking by suffix frequency
+err = false(3, 1);
+
 for blk = 1:n
-    [SA, win_params] = select_window(SA, win_params, pos, pos-n-1);
-    SA(:, 3) = min(mask, SA(:, 3));
+    [SA, win_params, empty_SA] = select_window(SA, win_params, pos, pos-n-1, mask);
+    if empty_SA
+        fprintf('empty window at %d\n', pos);
+        B(blk, :) = {NaN, NaN, '---'};
+        pos = pos + 1;
+        err(2) = true;
+        continue
+    end
 
     blockAA = longest_prefix(key(pos:end), SA, refAA, win_params);
-    assert(~isempty(blockAA))
+    if isempty(blockAA)
+        fprintf('empty block at %d\n', pos);
+        B(blk, :) = {NaN, NaN, '---'};
+        pos = pos + 1;
+        err(1) = true;
+        continue
+    end
+
     [B{blk, 3}, B{blk, 1}, B{blk, 2}] = most_freq_prefix(blockAA, SA, refAA, refNT, win_params);
     pos = pos + length(blockAA);
     if pos > n
-        break;
+        break
     end
 end
 
 B = B(1:blk, :);
 mapseq = cat(2, B{:, 3});
 
-assert(strcmp(nt2aa(mapseq, 'AlternativeStartCodons', false), key));
+if ~any(err)
+	err(3) = ~strcmp(nt2aa(mapseq, 'AlternativeStartCodons', false), key);
+end
 end
 
 
@@ -44,8 +61,8 @@ function [MF, gene, loc] = most_freq_prefix(pref, SA, refAA, refNT, win_params)
 COUNT_OVERELAPPING_WINS = false;  % simulating the parallel job version
 
 nP = length(pref) - 1;
-[~, left] = binary_search(pref, SA, refAA);
-[~, right] = binary_search([pref, '~'], SA, refAA);
+left = binary_search(pref, SA, refAA);
+right = binary_search([pref, '~'], SA, refAA);
 if left ~= right
     iSA = left : right - 1;
 else

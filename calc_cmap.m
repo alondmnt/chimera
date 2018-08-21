@@ -1,5 +1,5 @@
-function [mapseq, B] = calc_cmap(key, SA, refAA, refNT)
-% [mapseq, B] = CALC_CMAP(key, SA, refAA, refNT)
+function [mapseq, B, err] = calc_cmap(key, SA, refAA, refNT)
+% [mapseq, B, err] = CALC_CMAP(key, SA, refAA, refNT)
 %  compute the ChimeraMap (Zur and Tuller 2014) solution for a given key.
 %  an optimized implementation.
 %
@@ -8,20 +8,33 @@ function [mapseq, B] = calc_cmap(key, SA, refAA, refNT)
 n = length(key);
 B = cell(n, 3); % blocks
 pos = 1; % position in key
+err = false(3, 1);
+
 for blk = 1:n
     blockAA = longest_prefix(key(pos:end), SA, refAA);
+    if isempty(blockAA)
+        fprintf('empty block at %d\n', pos);
+        B(blk, :) = {NaN, NaN, '---'};
+        pos = pos + 1;
+        err(1) = true;
+        continue
+    end
+
     [B{blk, 3}, B{blk, 1}, B{blk, 2}] = most_freq_prefix(blockAA, SA, refAA, refNT);
     pos = pos + length(blockAA);
     if pos > n
-        break;
+        break
     end
 end
 
 B = B(1:blk, :);
 mapseq = cat(2, B{:, 3});
 
-assert(strcmp(nt2aa(mapseq, 'AlternativeStartCodons', false), key));
+if ~any(err)
+	err(3) = ~strcmp(nt2aa(mapseq, 'AlternativeStartCodons', false), key);
 end
+end
+
 
 function [MF, gene, loc] = most_freq_prefix(pref, SA, refAA, refNT)
 % finds the most frequent *NT* prefix in [SA] that codes the given 
@@ -29,8 +42,8 @@ function [MF, gene, loc] = most_freq_prefix(pref, SA, refAA, refNT)
 % locate all occurences of the AA block in the genome.
 
 nP = length(pref) - 1;
-[~, left] = binary_search(pref, SA, refAA);
-[~, right] = binary_search([pref, '~'], SA, refAA);
+left = binary_search(pref, SA, refAA);
+right = binary_search([pref, '~'], SA, refAA);
 iSA = left : right - 1;
 iSA(~SA(iSA, 3)) = [];  % 16/08/18: masking suffixes with 0 frequency
 iSA(SA(iSA, 1) + nP > cellfun(@length, refAA(SA(iSA, 2)))) = [];  % 16/08/18: rudimentary check
