@@ -1,5 +1,5 @@
-function [pref, pind] = longest_prefix(key, SA, ref, win_params)
-%[pref, pind] = LONGEST_PREFIX(key, SA, ref, max_pos_start, max_pos_end)
+function [pref, pind, homologs] = longest_prefix(key, SA, ref, win_params, max_len)
+%[pref, pind] = LONGEST_PREFIX(key, SA, ref, win_params, max_len)
 %  find the longest prefix between [key] and the suffix array [SA],
 %  and return its first index. original strings are stored in [ref] and 
 %  their IDs referred to in [SA].
@@ -11,26 +11,36 @@ function [pref, pind] = longest_prefix(key, SA, ref, win_params)
 %   August  2018: suffix masking.
 
 where = binary_search(key, SA, ref);
-if ~SA(mask_suffix(SA, where, -1, 1, Inf), 3)  % (=where) unless end of SA then (=where-1)
-    assert(~sum(SA(:, 3)), 'too many cooks!');
-    pref = '';
-    pind = -1;
-    return
-end
 where = min(max(1, where), size(SA, 1));
 
-if nargin < 4 || ~win_params.truncate_seq
-    % when suffixes aren't truncated, the two adjacent suffixes contain the
-    % longest common prefix
-    where = get_neighbors(where, SA);
-    neighbors = arrayfun(@(x) {ref{SA(x, 2)}(SA(x, 1) : end)}, where);
-    [n, pind] = max(cellfun(@(x) count_common(key, x), neighbors));
-    pind = where(pind); % always return the first index that matched
-    pref = key(1 : n);
+if nargin < 5
+    max_len = length(key);
+end
+homologs = [];
 
-else
-    [n, pind] = longest_trunc_prefix(key, SA, ref, where, win_params);
-    pref = key(1 : n);
+n = Inf;  % prefix length
+while n > max_len
+    if isfinite(n)  % mask previous attempt (homolog suspect) and repeat
+        if isempty(homologs)
+            homologs = SA(:, 2) == SA(pind, 2);
+        else
+            homologs = homologs | (SA(:, 2) == SA(pind, 2));
+        end
+        SA(homologs, 3) = 0;
+    end
+    if nargin < 4 || isempty(win_params) || ~win_params.truncate_seq
+        % when suffixes aren't truncated, the two adjacent suffixes contain the
+        % longest common prefix
+        nei = get_neighbors(where, SA);
+        neighbors = arrayfun(@(x) {ref{SA(x, 2)}(SA(x, 1) : end)}, nei);
+        [n, pind] = max(cellfun(@(x) count_common(key, x), neighbors));
+        pind = nei(pind); % always return the first index that matched
+        pref = key(1 : n);
+
+    else
+        [n, pind] = longest_trunc_prefix(key, SA, ref, where, win_params);
+        pref = key(1 : n);
+    end
 end
 
 end

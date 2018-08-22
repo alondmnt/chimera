@@ -446,7 +446,20 @@ end
 
 function handles = update_chimera(handles)
 % algorithm parameters displayed
-tmp = sprintf('win size: %d codons\ncenter: %d\n', handles.winParams.size, handles.winParams.center);
+str_block = {};
+if isfinite(handles.winParams.max_len)
+    str_block = [str_block, {sprintf('%d cod', handles.winParams.max_len)}];
+end
+if isfinite(handles.winParams.max_pos)
+    str_block = [str_block, {sprintf('%.0f%%', 100 * handles.winParams.max_pos)}];
+end
+if isempty(str_block)
+    str_block = 'none';
+else
+    str_block = strjoin(str_block, ', ');
+end
+tmp = sprintf('win size: %d codons\nlimit: %s\ncenter: %d\n', ...
+              handles.winParams.size, str_block, handles.winParams.center);
 if handles.winParams.by_start
     tmp = [tmp, 'start'];
 end
@@ -587,7 +600,10 @@ handles.default_regions = {zeros(0, 2)};
 handles.during_ars = false;
 handles.during_map = false;
 
-handles.winParams = struct('size', 70, 'center', 0, 'by_start', 1, 'by_stop', 1, 'truncate_seq', 0);
+handles.winParams = struct('size', 70, 'center', 0, ...
+                           'by_start', 1, 'by_stop', 1, ...
+                           'truncate_seq', 0, ...
+                           'max_len', 70, 'max_pos', 0.5);
 
 cmap_logo(handles.axLogo);
 
@@ -704,6 +720,7 @@ handles = update_figure(hObject, handles);
 
 ntarg = length(handles.target_seq);
 target_filter = {};
+homolog_filter = {};
 target_error = {};
 cmap_names = cellfun(@(x) get_i0(strsplit(strrep(x, ',', ';'), ' '), 0), handles.target_name);
 for t = 1:ntarg
@@ -760,16 +777,21 @@ for t = 1:ntarg
 
     if do_chimera && (handles.winParams.size == 0)
         % not position specific
-        [chimera_seq, mblocks, err] = calc_cmap(handles.target_seq{1}, handles.SA, ...
-            handles.reference_aa, handles.reference_seq);
-    elseif do_chimera
-        [chimera_seq, mblocks, err] = calc_cmap_posspec(handles.target_seq{1}, handles.SA, ...
+        [chimera_seq, mblocks, err, homologs] = calc_cmap(handles.target_seq{1}, handles.SA, ...
             handles.reference_aa, handles.reference_seq, ...
-            handles.winParams);
+            handles.winParams.max_len, handles.winParams.max_pos);
+    elseif do_chimera
+        [chimera_seq, mblocks, err, homologs] = calc_cmap_posspec(handles.target_seq{1}, handles.SA, ...
+            handles.reference_aa, handles.reference_seq, ...
+            handles.winParams, ...
+            handles.winParams.max_len, handles.winParams.max_pos);
     else
         chimera_seq = '';
     end
 
+    if homologs
+        homolog_filter{end+1} = sprintf('%05d: %s (filtered %d)', t, cmap_names{t}, homologs);
+    end
     if any(err)
         err_string = sprintf('%05d: %s', t, cmap_names{t});
         if err(1)
@@ -880,6 +902,12 @@ if ~isempty(target_filter)
             'ListString', target_filter, 'SelectionMode', 'single', ...
             'ListSize', [240, 300], 'CancelString', 'Cool');
 end
+if ~isempty(homolog_filter)
+    listdlg('Name', 'homologs in reference', 'PromptString', ...
+            'homologs suspected for the following targets:', ...
+            'ListString', homolog_filter, 'SelectionMode', 'single', ...
+            'ListSize', [240, 300], 'CancelString', 'Cool');
+end
 if ~isempty(target_error)
     listdlg('Name', 'cMap errors', 'PromptString', ...
             'the following errors occured during optimization:', ...
@@ -893,7 +921,7 @@ function butTarget_Callback(hObject, eventdata, handles)
 % hObject    handle to butTarget (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-[fname, dirname] = uigetfile({'*.fa;*.fasta', 'fasta file'}, 'select a protein sequence file');
+[fname, dirname] = uigetfile({'*.fa;*.fasta', 'fasta file'}, 'select a sequence file');
 if fname == 0
     return
 end
@@ -905,7 +933,7 @@ end
 
 if length(seqs) > 1
     ls = arrayfun(@(x) {sprintf('%05d: %s', x, seqs(x).Header)}, 1:length(seqs));
-    [ind, ok] = listdlg('ListString', ls, 'Name', 'select a protein', ...
+    [ind, ok] = listdlg('ListString', ls, 'Name', 'select a target sequence', ...
                         'ListSize', [450, 300], 'SelectionMode', 'multiple');
     clear('ls');
     if ok == 0
@@ -1407,7 +1435,7 @@ function optSourceTable_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of optSourceTable
-[fname, dirname] = uigetfile({'*.tsv;*.tab;*.*', 'tab separated values'}, 'select a codon score table');
+[fname, dirname] = uigetfile({'*.csv', 'comma separated values'}, 'select a codon score table');
 if fname == 0
     handles.optSourceRef.Value = 1;
     handles.optSourceTable.Value = 0;
@@ -1420,7 +1448,7 @@ file_OK = true;
 aa_list = fieldnames(aacount(''));
 fid = fopen(fullfile(dirname, fname));
 try
-    T = textscan(fid, '%s\t%f');
+    T = textscan(fid, '%s %f', 'Delimiter', ',');
     T{3} = nt2aa(T{1}, 'AlternativeStartCodons', false);
     aa_OK = ismember(aa_list, T{3});
 catch
@@ -1429,7 +1457,7 @@ end
 fclose(fid);
 
 if ~file_OK
-    errordlg('codon table format error. expecting a tab-separated file with 2 columns (and no header): [codon, score]', 'codon table', 'modal');
+    errordlg('codon table format error. expecting a comma-separated file with 2 columns (and no header): [codon, score]', 'codon table', 'modal');
     handles.optSourceRef.Value = 1;
     handles.optSourceTable.Value = 0;
     handles.CUB = [];
@@ -1526,6 +1554,7 @@ end
 switch ars_type
     case 'AA'
         cars_ref = handles.reference_aa;
+        win_params = handles.winParams;
         if handles.SA_exist && strcmpi(ars_type, handles.SA_type)
             % pass
         else
@@ -1535,6 +1564,10 @@ switch ars_type
         end
     case 'NT'
         cars_ref = handles.reference_seq;
+        win_params = handles.winParams;
+        win_params.size = 3 * win_params.size;  % aa2nt
+        win_params.center = 3 * win_params.center;
+        win_params.max_len = 3 * win_params.max_len;
         if handles.SA_exist && strcmpi(ars_type, handles.SA_type)
             % pass
         else
@@ -1552,6 +1585,7 @@ cars_score = nan(ntarg, 1);
 cars_score_reg = nan(ntarg, 1);
 cars_names = cellfun(@(x) get_i0(strsplit(strrep(x, ',', ';'), ' '), 0), handles.target_name);
 target_filter = {};
+homolog_filter = {};
 target_error = {};
 for t = 1:ntarg
     % chimera ARS
@@ -1588,13 +1622,17 @@ for t = 1:ntarg
     end
 
     if handles.winParams.size == 0
-        [cars_score(t), cars_vec, err] = calc_cars(cars_targ, ...
-            handles.SA, cars_ref);
+        [cars_score(t), cars_vec, err, homologs] = calc_cars(cars_targ, ...
+            handles.SA, cars_ref, win_params.max_len, win_params.max_pos);
     else
-        [cars_score(t), cars_vec, err] = calc_cars_posspec(cars_targ, ...
-            handles.SA, cars_ref, handles.winParams);
+        [cars_score(t), cars_vec, err, homologs] = calc_cars_posspec(cars_targ, ...
+            handles.SA, cars_ref, win_params, ...
+            win_params.max_len, win_params.max_pos);
     end
 
+    if homologs
+        homolog_filter{end+1} = sprintf('%05d: %s (filtered %d)', t, cars_names{t}, homologs);
+    end
     if any(err)
         err_string = sprintf('%05d: %s', t, cars_names{t});
         if err(1)
@@ -1636,6 +1674,12 @@ update_figure(hObject, handles);
 if ~isempty(target_filter)
     listdlg('Name', 'target in reference', 'PromptString', handles.filt_msg, ...
             'ListString', target_filter, 'SelectionMode', 'single', ...
+            'ListSize', [240, 300], 'CancelString', 'Cool');
+end
+if ~isempty(homolog_filter)
+    listdlg('Name', 'homologs in reference', 'PromptString', ...
+            'homologs suspected for the following targets:', ...
+            'ListString', homolog_filter, 'SelectionMode', 'single', ...
             'ListSize', [240, 300], 'CancelString', 'Cool');
 end
 if ~isempty(target_error)

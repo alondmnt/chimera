@@ -22,7 +22,7 @@ function varargout = winParams_macOS(varargin)
 
 % Edit the above text to modify the response to help winParams_macOS
 
-% Last Modified by GUIDE v2.5 17-Apr-2018 00:58:11
+% Last Modified by GUIDE v2.5 25-Aug-2018 19:48:47
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -53,6 +53,19 @@ handles.fieldWinCenter.String = num2str(handles.winParams.center);
 handles.checkStart.Value = handles.winParams.by_start;
 handles.checkStop.Value = handles.winParams.by_stop;
 handles.checkBlockEnd.Value = handles.winParams.truncate_seq;
+if isfinite(handles.winParams.max_len) && (handles.winParams.max_len > 0)
+    handles.checkHomolog1.Value = 1;
+    handles.fieldMaxLen.String = num2str(handles.winParams.max_len);
+else
+    handles.checkHomolog1.Value = 0;
+end
+if isfinite(handles.winParams.max_pos) && (handles.winParams.max_pos > 0)
+    handles.checkHomolog2.Value = 1;
+    handles.fieldMaxPos.String = num2str(handles.winParams.max_pos);
+else
+    handles.checkHomolog2.Value = 0;
+end
+
 guidata(hObject, handles);
 
 
@@ -66,17 +79,39 @@ handles.winParams.truncate_seq = handles.checkBlockEnd.Value;
 tmp = str2double(handles.fieldWinSize.String);
 if ~isfinite(tmp) || (tmp < 0)
     errordlg(sprintf('invalid window size value: %g', tmp), 'window size error', 'modal');
-    handles.fieldWinSize.String = num2str(handles.winParams.size);
 else
     handles.winParams.size = round(tmp);
 end
+handles.fieldWinSize.String = num2str(handles.winParams.size);
+
 tmp = str2double(handles.fieldWinCenter.String);
 if ~isfinite(tmp)
     errordlg(sprintf('invalid window center value: %g', tmp), 'window center error', 'modal');
-    handles.fieldWinCenter.String = num2str(handles.winParams.center);
 else
     handles.winParams.center = round(tmp);
 end
+handles.fieldWinCenter.String = num2str(handles.winParams.center);
+
+tmp = str2double(handles.fieldMaxLen.String);
+if handles.checkHomolog1.Value && (~isfinite(tmp) || tmp <= 0)
+    errordlg(sprintf('invalid max len value: %g', tmp), 'max block length error', 'modal');
+elseif ~handles.checkHomolog1.Value
+    handles.winParams.max_len = NaN;
+else
+    handles.winParams.max_len = ceil(tmp);
+end
+handles.fieldMaxLen.String = num2str(handles.winParams.max_len);
+
+tmp = str2double(handles.fieldMaxPos.String);
+if handles.checkHomolog2.Value && (~isfinite(tmp) || tmp > 1 || tmp <= 0)
+    errordlg(sprintf('invalid max fraction value: %g', tmp), 'max fraction error', 'modal');
+elseif ~handles.checkHomolog2.Value
+    handles.winParams.max_pos = NaN;
+else
+    handles.winParams.max_pos = tmp;
+end
+handles.fieldMaxPos.String = num2str(handles.winParams.max_pos);
+
 guidata(hObject, handles);
 
 % preview
@@ -240,4 +275,76 @@ if isequal(get(hObject, 'waitstatus'), 'waiting')
 else
     % The GUI is no longer waiting, just close it
     delete(hObject);
+end
+
+
+% --- Executes on button press in checkHomolog1.
+function checkHomolog1_Callback(hObject, eventdata, handles)
+% hObject    handle to checkHomolog1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of checkHomolog1
+if handles.checkHomolog1.Value
+    handles.fieldMaxLen.String = '70';
+end
+update_figure(hObject, handles);
+
+
+function fieldMaxLen_Callback(hObject, eventdata, handles)
+% hObject    handle to fieldMaxLen (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of fieldMaxLen as text
+%        str2double(get(hObject,'String')) returns contents of fieldMaxLen as a double
+update_figure(hObject, handles);
+
+
+% --- Executes during object creation, after setting all properties.
+function fieldMaxLen_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to fieldMaxLen (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in checkHomolog2.
+function checkHomolog2_Callback(hObject, eventdata, handles)
+% hObject    handle to checkHomolog2 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of checkHomolog2
+if handles.checkHomolog2.Value
+    handles.fieldMaxPos.String = '0.5';
+end
+update_figure(hObject, handles);
+
+
+function fieldMaxPos_Callback(hObject, eventdata, handles)
+% hObject    handle to fieldMaxPos (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of fieldMaxPos as text
+%        str2double(get(hObject,'String')) returns contents of fieldMaxPos as a double
+update_figure(hObject, handles);
+
+
+% --- Executes during object creation, after setting all properties.
+function fieldMaxPos_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to fieldMaxPos (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
 end

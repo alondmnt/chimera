@@ -1,9 +1,14 @@
-function [mapseq, B, err] = calc_cmap_posspec(key, SA, refAA, refNT, win_params)
-% [mapseq, B, err] = CALC_CMAP_POSSPEC(key, SA, refAA, refNT, win_params)
+function [mapseq, B, err, filtered] = calc_cmap_posspec(key, SA, refAA, refNT, win_params, max_len, max_pos)
+% [mapseq, B, err, filtered] = CALC_CMAP_POSSPEC(key, SA, refAA, refNT, win_params, max_len, max_pos)
 %   compute the position-specific chimeraMap solution for a given key.
 %   unlike the original chimeraMap (Zur and Tuller, 2014), blocks are
 %   selected from windows in all reference sequences that are positioned
 %   at the same distance (as in the target gene [key]) from ORF start/stop.
+%
+%   max_len: if provided, cARS will detect single substrings/blocks that
+%       are larger than [max_len] and filter the entire gene of origin.
+%   max_pos: if provided, cARS will detect genes that occur in a fraction
+%       of positions that is larger than [max_pos] and filter them.
 %
 % Alon Diament / Tuller Lab, January 2018.
 
@@ -12,14 +17,24 @@ if ~isstruct(win_params)
     win_params = struct('size', win_params, 'center', 0, ...
                         'by_start', true, 'by_stop', true, 'truncate_seq', false);
 end
+if nargin < 7 || max_pos <= 0 || ~isfinite(max_pos)
+    max_pos = 1;
+end
+if nargin < 6 || max_len <= 0 || ~isfinite(max_len)
+    max_len = length(key);
+end
 
 n = length(key);
 B = cell(n, 3); % blocks
-pos = 1; % position in key
 mask = ~SA(:, 3);  % masking by suffix frequency
+cmap_origin = zeros(n, 2);
 err = false(3, 1);
+filtered = 0;
 
-for blk = 1:n
+pos = 1; % position in key
+blk = 0;
+while pos <= n
+    blk = blk + 1;
     [SA, win_params, empty_SA] = select_window(SA, win_params, pos, pos-n-1, mask);
     if empty_SA
         fprintf('empty window at %d\n', pos);
@@ -29,7 +44,8 @@ for blk = 1:n
         continue
     end
 
-    blockAA = longest_prefix(key(pos:end), SA, refAA, win_params);
+    [blockAA, ~, homologs] = longest_prefix(key(pos:end), SA, refAA, win_params, max_len);
+    m = length(blockAA);
     if isempty(blockAA)
         fprintf('empty block at %d\n', pos);
         B(blk, :) = {NaN, NaN, '---'};
@@ -37,11 +53,25 @@ for blk = 1:n
         err(1) = true;
         continue
     end
+    if ~isempty(homologs)
+        mask(homologs) = true;
+        filtered = filtered + 1;
+    end
 
     [B{blk, 3}, B{blk, 1}, B{blk, 2}] = most_freq_prefix(blockAA, SA, refAA, refNT, win_params);
-    pos = pos + length(blockAA);
-    if pos > n
-        break
+    cmap_origin(pos:pos+m-1, 1) = B{blk, 1};
+    cmap_origin(pos:pos+m-1, 2) = blk;
+
+    same = cmap_origin(:, 1) == cmap_origin(pos, 1);
+    if mean(same) > max_pos
+        mask(SA(:, 2) == cmap_origin(pos, 1)) = true;
+        filtered = filtered + 1;
+        pos = find(same, 1);  % backtrack
+        blk = cmap_origin(pos, 2) - 1;
+        [B{blk+1:end, :}] = deal({});
+        cmap_origin(pos:end, :) = 0;
+    else
+        pos = pos + m;
     end
 end
 

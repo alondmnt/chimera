@@ -1,17 +1,34 @@
-function [mapseq, B, err] = calc_cmap(key, SA, refAA, refNT)
-% [mapseq, B, err] = CALC_CMAP(key, SA, refAA, refNT)
+function [mapseq, B, err, filtered] = calc_cmap(key, SA, refAA, refNT, max_len, max_pos)
+% [mapseq, B, err, filtered] = CALC_CMAP(key, SA, refAA, refNT, max_len, max_pos)
 %  compute the ChimeraMap (Zur and Tuller 2014) solution for a given key.
 %  an optimized implementation.
 %
-% Alon Diament, July 2015.
+%   max_len: if provided, cARS will detect single substrings/blocks that
+%       are larger than [max_len] and filter the entire gene of origin.
+%   max_pos: if provided, cARS will detect genes that occur in a fraction
+%       of positions that is larger than [max_pos] and filter them.
+%
+% Alon Diament / Tuller Lab, July 2015.
+
+if nargin < 6 || max_pos <= 0 || ~isfinite(max_pos)
+    max_pos = 1;
+end
+if nargin < 5 || max_len <= 0 || ~isfinite(max_len)
+    max_len = length(key);
+end
 
 n = length(key);
 B = cell(n, 3); % blocks
-pos = 1; % position in key
+cmap_origin = zeros(n, 2);
 err = false(3, 1);
+filtered = 0;
 
-for blk = 1:n
-    blockAA = longest_prefix(key(pos:end), SA, refAA);
+pos = 1; % position in key
+blk = 0;
+while pos <= n
+    blk = blk + 1;
+    [blockAA, ~, homologs] = longest_prefix(key(pos:end), SA, refAA, [], max_len);
+    m = length(blockAA);
     if isempty(blockAA)
         fprintf('empty block at %d\n', pos);
         B(blk, :) = {NaN, NaN, '---'};
@@ -19,11 +36,25 @@ for blk = 1:n
         err(1) = true;
         continue
     end
+    if ~isempty(homologs)
+        SA(homologs, 3) = 0;  % mask by 0 suffix frequency
+        filtered = filtered + 1;
+    end
 
     [B{blk, 3}, B{blk, 1}, B{blk, 2}] = most_freq_prefix(blockAA, SA, refAA, refNT);
-    pos = pos + length(blockAA);
-    if pos > n
-        break
+    cmap_origin(pos:pos+m-1, 1) = B{blk, 1};
+    cmap_origin(pos:pos+m-1, 2) = blk;
+
+    same = cmap_origin(:, 1) == cmap_origin(pos, 1);
+    if mean(same) > max_pos
+        SA(SA(:, 2) == cmap_origin(pos, 1), 3) = 0;  % mask
+        filtered = filtered + 1;
+        pos = find(same, 1);  % backtrack
+        blk = cmap_origin(pos, 2) - 1;
+        [B{blk+1:end, :}] = deal({});
+        cmap_origin(pos:end, :) = 0;
+    else
+        pos = pos + m;
     end
 end
 

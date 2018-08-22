@@ -1,4 +1,5 @@
 function [SA, win_params, empty_SA] = select_window(SA, win_params, pos_start, pos_stop, mask)
+% [SA, win_params, empty_SA] = SELECT_WINDOW(SA, win_params, pos_start, pos_stop, mask)
 % filter only relevant suffixes, i.e.:
 % 1. starting at the same distance from start as [start_pos], within
 % [max_dist] codons; or:
