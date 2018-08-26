@@ -310,6 +310,8 @@ handles.statRegionFile.Visible = 'off';
 handles.statRegionSel.Visible = 'off';
 handles.optNT.ForegroundColor = [0, 0, 0];
 handles.optNT.FontWeight = 'normal';
+handles.optRefNT.ForegroundColor = [0, 0, 0];
+handles.optRefNT.FontWeight = 'normal';
 handles.statMap.String = '';
 handles.statARS.String = '';
 
@@ -337,26 +339,12 @@ end
 if handles.reference_exist
     if ~strcmpi(handles.reference_type, 'NT') && is_ready_2map
         handles.statMap.String = 'NT reference needed';
+        handles.statReference.Visible = 'on';
+        handles.optRefNT.ForegroundColor = handles.statTarget.ForegroundColor;
+        handles.optRefNT.FontWeight = 'bold';
         is_ready_2map = false;
         % can still calc cARS
     end
-%     if handles.target_exist  % TODO: REMOVE
-%         repres_AA = ismember(handles.target_AA_alpha, handles.reference_AA_alpha);
-%         if strcmpi(handles.target_type, 'NT') && strcmpi(handles.reference_type, 'NT')
-%             repres_NT = ismember(handles.target_NT_alpha, handles.reference_NT_alpha);
-%         else
-%             repres_NT = true;
-%         end
-%         if ~all(repres_AA) && is_ready_2map
-%             handles.statMap.String = 'target not covered by ref';
-%             is_ready_2map = false;
-%             is_ready_2ars = false;
-%         end
-%         if (~all(repres_AA) || ~all(repres_NT)) && is_ready_2ars
-%             handles.statARS.String = 'target not covered by ref';
-%             is_ready_2ars = false;
-%         end
-%     end
 else
     if is_ready_2map || is_ready_2ars
         handles.statMap.String = 'reference missing';
@@ -1358,7 +1346,11 @@ function butRegions_Callback(hObject, eventdata, handles)
 if fname == 0
     return
 end
-regions = fastaread(fullfile(dirname, fname));
+try
+    regions = fastaread(fullfile(dirname, fname));
+catch
+    errordlg('invalid file: %s', fullfile(dirname, fname));
+end
 
 [target_in_file, itarg] = ismember(handles.target_name, {regions.Header});
 if ~all(target_in_file)
@@ -1407,7 +1399,7 @@ for i = 1:length(handles.target_seq)
     if ~target_in_file(i)
         continue
     end
-    handles.chimera_regions{i} = set2region(find(upper(regions(itarg(i)).Sequence) == 'M'));
+    handles.chimera_regions{i} = set2region(find(upper(regions(itarg(i)).Sequence) == 'B'));
     handles.codon_regions{i} = set2region(find(upper(regions(itarg(i)).Sequence) == 'C'));
     handles.default_regions{i} = set2region(find(upper(regions(itarg(i)).Sequence) == 'D'));
 end
