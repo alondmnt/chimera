@@ -40,7 +40,7 @@ while any(pos_list)
     end
 
     same = cars_origin == cars_origin(pos);
-    if mean(same) > max_pos
+    if (mean(same) > max_pos) && (n > 1)
         SA(SA(:, 2) == cars_origin(pos), 3) = 0;  % mask
         filtered = filtered + 1;
         pos_list(same) = true;

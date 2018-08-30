@@ -745,6 +745,7 @@ for t = 1:ntarg
 
     % check if target is already in reference
     if handles.default_exist
+        % re-translating with alternative=False to match the reference
         [filtered, handles] = filter_target_from_ref(handles, ...
                                                 nt2aa(handles.default_seq{1}, 'AlternativeStartCodons', false), ...
                                                 handles.reference_aa);
@@ -1532,12 +1533,14 @@ tic;
 handles.during_ars = true;
 handles = update_figure(hObject, handles);
 handles.statARS.String = 'building index'; drawnow;
+win_params = handles.winParams;
 
+% select ARS alphabet
 if strcmpi(handles.reference_type, 'AA') || strcmpi(handles.target_type, 'AA')
     ars_type = 'AA';
 else
     % NT may be converted to AA
-    ars_type = {'NT', 'AA'};
+    ars_type = {'NT', 'codon', 'AA'};
 end
 if iscell(ars_type)
     ars_type = questdlg('select an alphabet for Chimera ARS', 'cARS', ...
@@ -1546,31 +1549,23 @@ end
 switch ars_type
     case 'AA'
         cars_ref = handles.reference_aa;
-        win_params = handles.winParams;
-        if handles.SA_exist && strcmpi(ars_type, handles.SA_type)
-            % pass
-        else
-            handles.SA = build_suffix_array(handles.reference_aa, false);
-            handles.SA_type = 'AA';  % this SA is also relevant for cMap
-            handles.SA_exist = true;
-        end
+    case 'codon'
+        cars_ref = nt2codon(handles.reference_seq);
     case 'NT'
         cars_ref = handles.reference_seq;
-        win_params = handles.winParams;
         win_params.size = 3 * win_params.size;  % aa2nt
         win_params.center = 3 * win_params.center;
         win_params.max_len = 3 * win_params.max_len;
-        if handles.SA_exist && strcmpi(ars_type, handles.SA_type)
-            % pass
-        else
-            handles.SA = build_suffix_array(handles.reference_seq, false);
-            handles.SA_type = 'NT';  % this SA is NOT relevant for cMap
-            handles.SA_exist = true;
-        end
     otherwise
         return
 end
-assert(strcmpi(handles.SA_type, ars_type));
+if handles.SA_exist && strcmpi(ars_type, handles.SA_type)
+    % pass
+else
+    handles.SA = build_suffix_array(cars_ref, false);
+    handles.SA_type = ars_type;
+    handles.SA_exist = true;
+end
 
 ntarg = length(handles.target_seq);
 cars_score = nan(ntarg, 1);
@@ -1589,14 +1584,17 @@ for t = 1:ntarg
     handles.statARS.String = sprintf('target %d', t); drawnow;
 
     chim_region = double(region2set(handles.chimera_regions{1}));
-    if strcmpi(ars_type, 'AA')
-        cars_targ = handles.target_seq{1};
-    elseif strcmpi(ars_type, 'NT')
-        cars_targ = handles.default_seq{1};
-        chim_region = bsxfun(@minus, 3*chim_region, [2; 1; 0]);
-        chim_region = chim_region(:);
-    else
-        error('too many cooks!');
+    switch ars_type
+        case 'AA'
+            cars_targ = handles.target_seq{1};
+        case 'codon'
+            cars_targ = nt2codon(handles.default_seq{1});
+        case 'NT'
+            cars_targ = handles.default_seq{1};
+            chim_region = bsxfun(@minus, 3*chim_region, [2; 1; 0]);
+            chim_region = chim_region(:);
+        otherwise
+            error('too many cooks!');
     end
 
     % check if target is already in reference

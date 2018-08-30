@@ -46,7 +46,7 @@ while pos <= n
     cmap_origin(pos:pos+m-1, 2) = blk;
 
     same = cmap_origin(:, 1) == cmap_origin(pos, 1);
-    if mean(same) > max_pos
+    if (mean(same) > max_pos) && (n > 1)
         SA(SA(:, 2) == cmap_origin(pos, 1), 3) = 0;  % mask
         filtered = filtered + 1;
         pos = find(same, 1);  % backtrack
