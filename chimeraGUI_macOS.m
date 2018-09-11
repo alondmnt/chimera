@@ -250,8 +250,8 @@ if ~isempty(regions)
     b = barh(handles.axPreview, [regions, regions]', 1, 'stacked', 'EdgeColor', 'none', ...
         'ButtonDownFcn', @select_region_from_figure);
     [b(categ == 1).FaceColor] = deal([160, 197, 95]/255);  % [205, 120, 35]/255);
-    [b(categ == 2).FaceColor] = deal([123, 59, 59]/255);  % [41, 131, 20]/255);
-    [b(categ == 3).FaceColor] = deal([28, 135, 162]/255);  % [31, 149, 179]/255);
+    [b(categ == 2).FaceColor] = deal([28, 135, 162]/255);  % [31, 149, 179]/255);
+    [b(categ == 3).FaceColor] = deal([123, 59, 59]/255);  % [41, 131, 20]/255);
 else
     cla(handles.axPreview);
 end
@@ -550,6 +550,21 @@ while strcmp(longest_prefix(ctarg, handles.SA, cref), ctarg)
             error('too many cooks!');
     end
 end
+
+
+function w = CUB2weights(CUB)
+    aa_list = fieldnames(CUB);
+    n = length(aa_list);
+    codon_list = cell(n, 1);
+    w = cell(n, 1);
+    for aa = 1:n
+        codon_list{aa} = CUB.(aa_list{aa}).Codon;
+        w{aa} = CUB.(aa_list{aa}).Freq;
+    end
+    codon_list = cellcat(codon_list, 2);
+    w = cellcat(w, 2);
+    [~, isort] = sort(codon_list);
+    w = w(isort)';
 
 % --- End of my functions --- %
 
@@ -1527,7 +1542,6 @@ outmain = strcat(outfile, extent);
 fmain = fopen(outmain, 'w');
 outreport = strcat(outfile, '_summary', extent);
 frep = fopen(outreport, 'w');
-fprintf(frep, 'target,cARS_total,cARS_region\n');
 tic;
 
 handles.during_ars = true;
@@ -1538,9 +1552,11 @@ win_params = handles.winParams;
 % select ARS alphabet
 if strcmpi(handles.reference_type, 'AA') || strcmpi(handles.target_type, 'AA')
     ars_type = 'AA';
+    fprintf(frep, 'target,cARS_total,cARS_region\n');
 else
     % NT may be converted to AA
     ars_type = {'NT', 'codon', 'AA'};
+    fprintf(frep, 'target,cARS_total,cARS_region,codon_score\n');
 end
 if iscell(ars_type)
     ars_type = questdlg('select an alphabet for Chimera ARS', 'cARS', ...
@@ -1567,9 +1583,15 @@ else
     handles.SA_exist = true;
 end
 
+if isempty(handles.CUB)
+    [~, handles.CUB] = maximize_CUB('', handles.reference_seq);
+end
+w = CUB2weights(handles.CUB);
+
 ntarg = length(handles.target_seq);
 cars_score = nan(ntarg, 1);
 cars_score_reg = nan(ntarg, 1);
+codon_score = nan(ntarg, 1);
 cars_names = cellfun(@(x) get_i0(strsplit(strrep(x, ',', ';'), ' '), 0), handles.target_name);
 target_filter = {};
 homolog_filter = {};
@@ -1636,11 +1658,14 @@ for t = 1:ntarg
 
     cars_vec = cars_vec(chim_region);
     cars_score_reg(t) = mean(cars_vec);
+    if handles.default_exist
+        codon_score(t) = calc_score_from_weights(w, handles.default_seq{1});
+    end
 
     if ~profiling_run
         cars_str = strjoin(arrayfun(@(x) {int2str(x)}, cars_vec), ',');
         fprintf(fmain, sprintf('%s,%s\n', cars_names{t}, cars_str));
-        fprintf(frep, sprintf('%s,%.4f,%.4f\n', cars_names{t}, cars_score(t), cars_score_reg(t)));
+        fprintf(frep, sprintf('%s,%.4f,%.4f,%.4f\n', cars_names{t}, cars_score(t), cars_score_reg(t), codon_score(t)));
     end
 
     handles.target_seq(1) = [];

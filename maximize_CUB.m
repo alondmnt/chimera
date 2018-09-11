@@ -27,6 +27,10 @@ for a = 1:length(aa_list)
     pos = 3*(find(seq_aa == aa) - 1) + 1;  % aa to codon
     % 16/04/18: handling multiple maxima
     bestcode = find(max(CUB.(aa_list{a}).Freq) == CUB.(aa_list{a}).Freq);
+    if ~isstruct(ref_nt)
+        % normalize for CAI if we calculated the weights here
+        CUB.(aa_list{a}).Freq = CUB.(aa_list{a}).Freq / CUB.(aa_list{a}).Freq(bestcode);
+    end
     if length(bestcode) > 1
         bestcode = randsample(bestcode, length(pos), true);
         for i = 1:length(pos)
@@ -40,6 +44,6 @@ for a = 1:length(aa_list)
 end
 
 % test
-if ~strcmp(nt2aa(seq_nt, 'AlternativeStartCodons', false), seq_aa)
+if ~isempty(seq_nt) && ~strcmp(nt2aa(seq_nt, 'AlternativeStartCodons', false), seq_aa)
     error('codon optimization error');
 end
