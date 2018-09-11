@@ -39,6 +39,7 @@ while pos <= n
     if empty_SA
         fprintf('empty window at %d\n', pos);
         B(blk, :) = {NaN, NaN, '---'};
+        cmap_origin(pos, :) = [NaN; NaN];
         pos = pos + 1;
         err(2) = true;
         continue
@@ -49,6 +50,7 @@ while pos <= n
     if isempty(blockAA)
         fprintf('empty block at %d\n', pos);
         B(blk, :) = {NaN, NaN, '---'};
+        cmap_origin(pos, :) = [NaN; NaN];
         pos = pos + 1;
         err(1) = true;
         continue

@@ -32,6 +32,7 @@ while any(pos_list)
     cars_vec(pos) = length(substring);
     if isempty(substring)
         fprintf('empty substring at %d\n', pos);
+        cars_origin(pos) = NaN;
         err = true;
     end
     if ~isempty(homologs)
