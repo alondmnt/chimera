@@ -32,6 +32,11 @@ while n > max_len
         % when suffixes aren't truncated, the two adjacent suffixes contain the
         % longest common prefix
         nei = get_neighbors(where, SA);
+        if isempty(nei)
+            pind = 1;
+            pref = '';
+            return
+        end
         neighbors = arrayfun(@(x) {ref{SA(x, 2)}(SA(x, 1) : end)}, nei);
         [n, pind] = max(cellfun(@(x) count_common(key, x), neighbors));
         pind = nei(pind); % always return the first index that matched
