@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>index</title>
+
+
+<style type="text/css">
+@media print {
+  *,
+  *:before,
+  *:after {
+    background: transparent !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  a,
+  a:visited {
+    text-decoration: underline;
+  }
+
+  a[href]:after {
+    content: " (" attr(href) ")";
+  }
+
+  abbr[title]:after {
+    content: " (" attr(title) ")";
+  }
+
+  a[href^="#"]:after,
+  a[href^="javascript:"]:after {
+    content: "";
+  }
+
+  pre,
+  blockquote {
+    border: 1px solid #999;
+    page-break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr,
+  img {
+    page-break-inside: avoid;
+  }
+
+  img {
+    max-width: 100% !important;
+  }
+
+  p,
+  h2,
+  h3 {
+    orphans: 3;
+    widows: 3;
+  }
+
+  h2,
+  h3 {
+    page-break-after: avoid;
+  }
+}
+
+pre,
+code {
+  font-family: Menlo, Monaco, "Courier New", monospace;
+}
+
+pre {
+  padding: .5rem;
+  line-height: 1.25;
+  overflow-x: scroll;
+}
+
+a,
+a:visited {
+  color: #3498db;
+}
+
+a:hover,
+a:focus,
+a:active {
+  color: #2980b9;
+}
+
+.modest-no-decoration {
+  text-decoration: none;
+}
+
+html {
+  font-size: 12px;
+}
+
+@media screen and (min-width: 32rem) and (max-width: 48rem) {
+  html {
+    font-size: 15px;
+  }
+}
+
+@media screen and (min-width: 48rem) {
+  html {
+    font-size: 16px;
+  }
+}
+
+body {
+  line-height: 1.85;
+}
+
+p,
+.modest-p {
+  font-size: 1rem;
+  margin-bottom: 1.3rem;
+}
+
+h1,
+.modest-h1,
+h2,
+.modest-h2,
+h3,
+.modest-h3,
+h4,
+.modest-h4 {
+  margin: 1.414rem 0 .5rem;
+  font-weight: inherit;
+  line-height: 1.42;
+}
+
+h1,
+.modest-h1 {
+  margin-top: 0;
+  font-size: 3.998rem;
+}
+
+h2,
+.modest-h2 {
+  font-size: 2.827rem;
+}
+
+h3,
+.modest-h3 {
+  font-size: 1.999rem;
+}
+
+h4,
+.modest-h4 {
+  font-size: 1.414rem;
+}
+
+h5,
+.modest-h5 {
+  font-size: 1.121rem;
+}
+
+h6,
+.modest-h6 {
+  font-size: .88rem;
+}
+
+small,
+.modest-small {
+  font-size: .707em;
+}
+
+/* https://github.com/mrmrs/fluidity */
+
+img {
+  display: block;
+  width: 70%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+canvas,
+iframe,
+video,
+svg,
+select,
+textarea {
+  width: 100%;
+}
+
+@import url(http://fonts.googleapis.com/css?family=Open+Sans+Condensed:300,300italic,700);
+
+@import url(http://fonts.googleapis.com/css?family=Arimo:700,700italic);
+
+html {
+  font-size: 18px;
+  max-width: 100%;
+}
+
+body {
+  color: #444;
+  font-family: 'Open Sans Condensed', sans-serif;
+  font-weight: 300;
+  margin: 0 auto;
+  max-width: 48rem;
+  line-height: 1.45;
+  padding: .25rem;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: Arimo, Helvetica, sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  border-bottom: 2px solid #fafafa;
+  margin-bottom: 1.15rem;
+  padding-bottom: .5rem;
+  text-align: center;
+}
+
+blockquote {
+  border-left: 8px solid #fafafa;
+  padding: 1rem;
+}
+
+pre,
+code {
+  background-color: #fafafa;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<h1 id="toc_0">cMapApp: gene expression designer</h1>
+
+<p><img src="images/cMapApp.png" style="width:25% !important;"></p>
+
+<h2 id="toc_1">How to cite</h2>
+
+<p>Diament, Weiner, Shahar, et al. <strong>cMapApp: unsupervised coding sequence optimization in any given organism</strong>. pre-print, 2018.</p>
+
+<h2 id="toc_2">Download</h2>
+
+<p>The cMapApp binaries and source code are provided freely for non-commercial use.</p>
+
+<ul>
+<li><a href="bin/cMapApp-v0.9-macos.zip">v0.9-macOS</a></li>
+<li><a href="bin/cMapApp-v0.9-linux.zip">v0.9-Linux</a></li>
+<li><a href="bin/cMapApp-v0.9-win.zip">v0.9-Windows</a></li>
+<li><a href="src/cMapApp-v0.9-source.zip">v0.9-source</a></li>
+</ul>
+
+<h2 id="toc_3"><a name="guide"></a> User guide</h2>
+
+<p>cMapApp provides tools for the designing the coding sequence of proteins for optimized expression, using the position-specific ChimeraMap algorithm and codon usage optimization. The following tutorial will guide you step-by-step in the design of a gene. The application also provides online hints and status messages for the user.</p>
+
+<p><a href="#target">1. Target selection</a></p>
+
+<p><a href="#ref">2. Reference set selection</a></p>
+
+<p><a href="#reg">3. Region definition</a></p>
+
+<p><a href="#params">4. Additional design parameters</a></p>
+
+<p><a href="#output">5. Output files</a></p>
+
+<p><a href="#batch">6. Batch optimization</a></p>
+
+<h3 id="toc_4"><a name="target"></a> 1. Target selection <a href="#guide">^</a></h3>
+
+<p>cMapApp supports fasta files containing nucleotide or amino acid sequences. Select the appropriate alphabet type (AA seq / NT seq), and then click on &#39;Browse&#39; to select your file. When the fasta file contains multiple proteins, a window will pop-up in order to select the desired ones for optimization. You may select one or multiple proteins. While most of the following steps are applicable to both scenarios, batch optimization will be discussed in detail at the end of the tutorial.</p>
+
+<p>The program will prompt when illegal chars appear in the sequence(s), it contains partial codons, or missing a stop codon.</p>
+
+<p>Note, that NT seq targets can be used to define - in addition to the amino acid sequence - regions where the given sequence will be copied into the designed gene (additional details appear below).</p>
+
+<p>As long as a target has yet to be selected, an arrow will point at the target protein field and a &#39;target missing&#39; status will appear at the bottom right corner of the window.</p>
+
+<p><img src="images/GUI_1.jpg" alt="target selection"></p>
+
+<h3 id="toc_5"><a name="ref"></a> 2. Reference set selection <a href="#guide">^</a></h3>
+
+<p>cMapApp supports fasta files containing multiple nucleotide sequences. The given reference sequences may be used in 2 ways:</p>
+
+<ul>
+<li>Search for sub-sequences in the reference set that encode an identical block of amino acids in the target protein (via the ChimeraMap algorithm).</li>
+<li>Learn the codon usage bias (CUB) in the reference set and apply (maximize) it in the target protein.</li>
+</ul>
+
+<p>The program will prompt when illegal chars appear in the sequences, or when they contain partial codons.</p>
+
+<p>As long as a reference set has yet to be selected, an arrow will point at the reference seqs field and a &#39;reference missing&#39; status will appear at the bottom right corner of the window.</p>
+
+<p><img src="images/GUI_2.jpg" alt="reference set selection"></p>
+
+<h3 id="toc_6">3. <a name="reg"></a> Region definition <a href="#guide">^</a></h3>
+
+<p>cMapApp allows the user to combine the 3 approaches described above (ChimeraMap, codon usage bias, and pre-defined NT sequences) by associating regions in the target protein with each method. When a target protein is first selected, ChimeraMap is automatically set to apply to the entire protein.</p>
+
+<h4 id="toc_7"><a name="reg-edit"></a> 3.1 Regions editor</h4>
+
+<p>The bottom half of the window displays region definitions for the currently engineered target. Regions are listed in three separated columns, according to the associated method. At the bottom, a horizontal bar displays a map of the target gene, with positions colored according to the method that will apply to them (green: ChimeraMap, red: codon usage bias, blue: pre-defined sequence).</p>
+
+<p>In practice, the way cMapApp handles multiple region types is by optimizing the complete target gene accroding to each method. Next, sub-sequences are copied from the two optimized genes (and the third source, if applicable). Therefore, it is possible that a ChimeraMap block will be splitted during this process, if it overlaps with a region boundary.</p>
+
+<p>To add a new region, edit the text boxes in the respective column with the desired codon coordinates, and click on the &#39;+&#39; button. Note, that positive coordinates (such as 30 in the example below) are measured relatively to the 5&#39;-end of the sequence, while negative coordinates (such as -30 in the example) are measured relatively to the 3&#39;-end of the sequence (-1 being the last codon).</p>
+
+<p><img src="images/GUI_3.jpg" alt="regions editor"></p>
+
+<p>The program will prompt for user action when an added region is overlapping with an existing region. In the example above, the previously defined Chimera region from 1 to 583 was split, and a codon optimization region was inserted from 30 to 554 (the position that is 30cod from the target 3&#39;-end).</p>
+
+<p>To remove a region, edit the text boxes, and click on the &#39;-&#39; button. A removed region will be defined as &#39;default&#39; (copied from a pre-defined NT sequence, see the example below).</p>
+
+<p><img src="images/GUI_4.jpg" alt="default region"></p>
+
+<p>Note, that when a default region is defined (and a target NT sequence is required), the program will prompt for missing target sequences. In the example above we provided an AA sequence for the target, so when a default region was created from 200 to 250, an arrow appeared next to the target protein field, and the status below showed &#39;default NT seq missing&#39;. This can be ammended either by selecting a target NT seq, or by replacing the default region with either a ChimeraMap or a CUB region.</p>
+
+<p>You may click the list boxes and the regions map to select a region and update the respective text boxes with its boundaries.</p>
+
+<h4 id="toc_8"><a name="reg-file"></a> 3.2 Regions file</h4>
+
+<p>cMapApp supports fasta file (denoted with the extension &#39;.reg&#39;) containing sequences comprised of the letters <strong>M</strong> (for Chimera<strong>M</strong>ap), <strong>C</strong> (for <strong>C</strong>UB), and <strong>D</strong> (for <strong>D</strong>efault). The header (as well as length) of each record in the regions file should match one of the records in the target protein fasta. Each letter defines which of the methods will be applied to the corresponding codon position in the designed gene.</p>
+
+<h3 id="toc_9">4. <a name="params"></a> Additional design parameters <a href="#guide">^</a></h3>
+
+<h4 id="toc_10">4.1 ChimeraMap parameters</h4>
+
+<p>ChimeraMap parameters are summarized in a panel above the Chimera regions column. They can be edited by clicking on the &#39;options&#39; button, which opens a new window. There, parameters can be edited and the defined search window is visualized. In order to use the traditoinal (non-position-specific) ChimeraMap algorithm, one can enter 0 in the window size field.</p>
+
+<p><img src="images/GUI_5.jpg" alt="parameter window"></p>
+
+<h4 id="toc_11">4.2 Codon optimization parameters</h4>
+
+<p>Codon parameters are set in a panel above the codon regions column. Codons can be optimized based on two souces:</p>
+
+<ul>
+<li>The reference set (discussed above).</li>
+<li>A user-defined table of codon optimality scores.</li>
+</ul>
+
+<p>For the second method, cMapApp supports tab-separated files. Synonymous codons with the highest optimality score will be used to encode the target protein. Codons with equal maixmal score will be drawn uniformly. The program will prompt when some AAs are not represented in the given table. </p>
+
+<h3 id="toc_12">5. <a name="output"></a> Output files <a href="#guide">^</a></h3>
+
+<p>cMapApp generates two types of outputs:</p>
+
+<ul>
+<li>Fasta file containing the designed target gene(s).</li>
+<li>Report file for each of the target genes (separately) in &#39;.csv&#39; (comma-separated values), containing information on the different optimization regions. Specifically, ChimeraMap blocks are reported in the file. Note, that if a region boundary overlapped with a ChimeraMap block (see <a href="#reg-edit">section 3.1</a>), the complete block will be reported, although it was split when the final gene was constructed. For example:</li>
+</ul>
+
+<table>
+<thead>
+<tr>
+<th>pos_s</th>
+<th>pos_e</th>
+<th>type</th>
+<th>gene</th>
+<th>gene_loc</th>
+<th>block</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>1</td>
+<td>10</td>
+<td>codon: eColi.fasta</td>
+<td></td>
+<td>NaN</td>
+<td></td>
+</tr>
+<tr>
+<td>9</td>
+<td>12</td>
+<td>cMap</td>
+<td>MEPS</td>
+<td>14</td>
+<td>GGGATTCCCGCG</td>
+</tr>
+</tbody>
+</table>
+
+<p>The table reports that the first 10 codons were optimized based on codon frequencies in E. coli, while codons 11-12 were taken from a cMap block beginning at codon 9 in the target protein (and beginning at codon 14 in the reference gene MEPS).</p>
+
+<h3 id="toc_13">6. <a name="batch"></a> Batch optimization <a href="#guide">^</a></h3>
+
+<p>cMapApp supports batch optimization of multiple target proteins. One may select any number of targets from the fasta file in <a href="#target">section 1</a>. The rest of the workflow is similar, with the exception that the regions editor is not enabled when multiple targets are designed. If the design is based exclusively on ChimeraMap, there is no need for further action. Otherwise, region definitions must be provided via a regions file as described in <a href="#reg-file">section 3.2</a>.</p>
+
+
+
+<script type="text/x-mathjax-config">
+(function () {
+
+MathJax.Hub.Config({
+	'showProcessingMessages': false,
+	'messageStyle': 'none'
+});
+
+if (typeof MathJaxListener !== 'undefined') {
+	MathJax.Hub.Register.StartupHook('End', function () {
+		MathJaxListener.invokeCallbackForKey_('End');
+	});
+}
+
+})();
+</script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+
+</body>
+
+</html>
