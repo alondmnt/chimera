@@ -286,7 +286,7 @@ function checkHomolog1_Callback(hObject, eventdata, handles)
 
 % Hint: get(hObject,'Value') returns toggle state of checkHomolog1
 if handles.checkHomolog1.Value
-    handles.fieldMaxLen.String = '70';
+    handles.fieldMaxLen.String = '40';
 end
 update_figure(hObject, handles);
 

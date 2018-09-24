@@ -1,5 +1,12 @@
 function varargout = chimeraGUI(varargin)
 % CHIMERAGUI MATLAB code for chimeraGUI.fig
+%
+%      ChimeraUGEM: Unsupervised Gene Expression Modeling
+%      Diament et al., 2018
+%
+%      Version 1.0
+%      Alon Diament / Tuller Lab, September 2018.
+%
 %      CHIMERAGUI, by itself, creates a new CHIMERAGUI or raises the existing
 %      singleton*.
 %
@@ -22,7 +29,7 @@ function varargout = chimeraGUI(varargin)
 
 % Edit the above text to modify the response to help chimeraGUI
 
-% Last Modified by GUIDE v2.5 06-Apr-2018 11:16:02
+% Last Modified by GUIDE v2.5 24-Sep-2018 22:05:27
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -45,6 +52,12 @@ end
 
 
 % --- All my functions are here --- %
+function x = get_i0(x, i)
+% ~immitates python 0-indexing
+
+x = x(mod(i, length(x)) + 1);
+
+
 function handles = update_figure(hObject, handles)
 handles = update_regions(handles);
 handles = update_bar(handles);
@@ -244,8 +257,8 @@ if ~isempty(regions)
     b = barh(handles.axPreview, [regions, regions]', 1, 'stacked', 'EdgeColor', 'none', ...
         'ButtonDownFcn', @select_region_from_figure);
     [b(categ == 1).FaceColor] = deal([160, 197, 95]/255);  % [205, 120, 35]/255);
-    [b(categ == 2).FaceColor] = deal([123, 59, 59]/255);  % [41, 131, 20]/255);
-    [b(categ == 3).FaceColor] = deal([28, 135, 162]/255);  % [31, 149, 179]/255);
+    [b(categ == 2).FaceColor] = deal([28, 135, 162]/255);  % [31, 149, 179]/255);
+    [b(categ == 3).FaceColor] = deal([123, 59, 59]/255);  % [41, 131, 20]/255);
 else
     cla(handles.axPreview);
 end
@@ -259,6 +272,7 @@ if lens(end) == 0
 end
 handles.axPreview.YTick = [];
 handles.axPreview.YLim = [0.5, 1.5];
+handles.axPreview.TickLength = [0, 0];
 
 
 function select_region_from_figure(hObject, eventdata)
@@ -294,44 +308,60 @@ guidata(hObject, handles);
 
 
 function handles = update_status(handles)
-% this functions determines whether all prequisites for the optimization
+% this functions determines whether all prerequisites for the optimization
 % are met (and signals the user whether data is missing).
-is_ready = true;
+is_ready_2map = true;
+is_ready_2ars = true;
 handles.statTarget.Visible = 'off';
 handles.statReference.Visible = 'off';
 handles.statRegionFile.Visible = 'off';
 handles.statRegionSel.Visible = 'off';
 handles.optNT.ForegroundColor = [0, 0, 0];
 handles.optNT.FontWeight = 'normal';
+handles.optRefNT.ForegroundColor = [0, 0, 0];
+handles.optRefNT.FontWeight = 'normal';
+handles.statMap.String = '';
+handles.statARS.String = '';
+handles.butRegions.Enable = 'off';
 
 
 if (handles.target_exist || handles.default_exist) && ~isempty(handles.target_seq)
+    handles.butRegions.Enable = 'on';
 %     handles.statTarget.String = 'OK';
 else
-    handles.statRun.String = 'target missing';
-    is_ready = false;
+    handles.statMap.String = 'target missing';
+    is_ready_2map = false;
+    is_ready_2ars = false;
     handles.statTarget.Visible = 'on';
 end
 
 is_default_req = ~all(cellfun(@isempty, handles.default_regions));
 if is_default_req && ~handles.default_exist
-    if is_ready
-        handles.statRun.String = 'default NT seq missing';
+    if is_ready_2map
+        handles.statMap.String = 'default NT seq missing';
         handles.statTarget.Visible = 'on';
         handles.optNT.ForegroundColor = handles.statTarget.ForegroundColor;
         handles.optNT.FontWeight = 'bold';
     end
-    is_ready = false;
+    is_ready_2map = false;
 end
 
 if handles.reference_exist
-%     handles.statReference.String = 'OK';  % sprintf('OK: %d', length(handles.reference_seq));
+    if ~strcmpi(handles.reference_type, 'NT') && is_ready_2map
+        handles.statMap.String = 'NT reference needed';
+        handles.statReference.Visible = 'on';
+        handles.optRefNT.ForegroundColor = handles.statTarget.ForegroundColor;
+        handles.optRefNT.FontWeight = 'bold';
+        is_ready_2map = false;
+        % can still calc cARS
+    end
 else
-    if is_ready
-        handles.statRun.String = 'reference missing';
+    if is_ready_2map || is_ready_2ars
+        handles.statMap.String = 'reference missing';
         handles.statReference.Visible = 'on';
     end
-    is_ready = false;
+    is_ready_2map = false;
+    is_ready_2ars = false;
 end
 
 if length(handles.target_seq) > 1
@@ -351,8 +381,8 @@ handles.butCodonRemRegion.Enable = region_editing;
 if ~all(cellfun(@length, {handles.chimera_regions, ...
                           handles.codon_regions, ...
                           handles.default_regions}) == length(handles.target_seq))
-    if is_ready
-%         handles.statRun.String = 'regions file missing';
+    if is_ready_2map
+%         handles.statMap.String = 'regions file missing';
         handles.statRegionFile.Visible = 'on';
     end
 %     is_ready = false;
@@ -360,28 +390,52 @@ end
 
 if any(cellfun(@(x, y) isempty(x) & isempty(y), ...
                handles.chimera_regions, handles.codon_regions))
-    if is_ready
-        handles.statRun.String = 'regions missing';
+    if is_ready_2map
+        handles.statMap.String = 'regions missing';
         handles.statRegionSel.Visible = 'on';
     end
-    is_ready = false;
+    is_ready_2map = false;
 end
 
-if is_ready
-    handles.statRun.String = 'ready';
-    handles.butRun.Enable = 'on';
+if any(cellfun(@isempty, handles.chimera_regions))
+    if is_ready_2ars
+        handles.statARS.String = 'no chimera region';
+        handles.statRegionSel.Visible = 'on';
+    end
+    is_ready_2ars = false;
+end
+
+if handles.during_ars && is_ready_2map
+    handles.statMap.String = 'cARS is on';
+    is_ready_2map = false;
+end
+if handles.during_map && is_ready_2ars
+    handles.statARS.String = 'cMap is on';
+    is_ready_2ars = false;
+end
+
+if is_ready_2map
+    handles.statMap.String = 'ready';
+    handles.butMap.Enable = 'on';
 else
-    handles.butRun.Enable = 'off';
+    handles.butMap.Enable = 'off';
+end
+
+if is_ready_2ars
+    handles.statARS.String = 'ready';
+    handles.butARS.Enable = 'on';
+else
+    handles.butARS.Enable = 'off';
 end
 
 if handles.target_exist
     n_seq = length(handles.target_seq);
     if n_seq > 1
         handles.fileTarget.String = sprintf('%s: [%d %s seqs]', handles.target_file, ...
-            n_seq, handles.seq_type);
+            n_seq, handles.target_type);
     else
         handles.fileTarget.String = sprintf('%s: [%s seq] %s', handles.target_file, ...
-            handles.seq_type, handles.target_name{1});
+            handles.target_type, handles.target_name{1});
     end
 else
     handles.fileTarget.String = '';
@@ -390,7 +444,20 @@ end
 
 function handles = update_chimera(handles)
 % algorithm parameters displayed
-tmp = sprintf('win size: %d codons\ncenter: %d\n', handles.winParams.size, handles.winParams.center);
+str_block = {};
+if isfinite(handles.winParams.max_len)
+    str_block = [str_block, {sprintf('%d cod', handles.winParams.max_len)}];
+end
+if isfinite(handles.winParams.max_pos)
+    str_block = [str_block, {sprintf('%.0f%%', 100 * handles.winParams.max_pos)}];
+end
+if isempty(str_block)
+    str_block = 'none';
+else
+    str_block = strjoin(str_block, ', ');
+end
+tmp = sprintf('win size: %d codons\nlimit: %s\ncenter: %d\n', ...
+              handles.winParams.size, str_block, handles.winParams.center);
 if handles.winParams.by_start
     tmp = [tmp, 'start'];
 end
@@ -401,6 +468,113 @@ if handles.winParams.by_stop
     tmp = [tmp, 'stop'];
 end
 handles.paramChimera.String = tmp;
+
+
+function [seq_res, len_res, iref] = is_target_in_ref(handles, alphabet)
+% DEPRECATED. see: filter_target_from_ref()
+assert(ischar(alphabet), 'alphabet must be a string');
+alphabet = upper(alphabet);
+
+len_res = false;
+seq_res = false;
+iref = find(strcmp(handles.target_name{1}, handles.reference_name));
+
+for i = 1:length(iref)
+    switch alphabet
+        case 'AA'
+            len_res(i) = length(handles.target_seq{1}) == length(handles.reference_aa{iref(i)});
+            seq_res(i) = strcmpi(handles.target_seq{1}, handles.reference_aa{iref(i)});
+
+        case 'NT'
+            if strcmpi(handles.target_type, 'NT')
+                tlen = length(handles.default_seq{1});
+                tseq = handles.default_seq{1};
+            else
+                tlen = 3*length(handles.target_seq{1});
+                tseq = 'z';
+            end
+            
+            if strcmpi(handles.reference_type, 'NT')
+                rlen = length(handles.reference_seq{iref(i)});
+                rseq = handles.reference_seq{iref(i)};
+            else
+                rlen = 3*length(handles.reference_aa{iref(i)});
+                rseq = 'x';  % different from tseq
+            end
+
+            len_res(i) = rlen == tlen;
+            seq_res(i) = strcmpi(rseq, tseq);
+
+        otherwise
+            error('unknown alphabet type');
+    end
+end
+
+
+function [filtered, handles] = filter_target_from_ref(handles, ctarg, cref)
+% using the suffix array to search the reference for sequences identical
+% to the target.
+% accepts handles containing the suffix array (containing redundant,
+% non-unique suffixes in field [SA]) and optionally an action to take
+% (field [filt_action]), the target sequence, and the refrence set.
+
+handles.SA(:, 3) = 1;  % reset all suffix frequencies to 1 (assuming non-unique SA)
+filtered = 0;
+prompt_user = ~isfield(handles, 'filt_action');
+if ~prompt_user && strcmpi(handles.filt_action, 'ignore')
+    return
+end
+
+while strcmp(longest_prefix(ctarg, handles.SA, cref), ctarg)
+    filtered = filtered + 1;
+    if prompt_user
+        handles.filt_action = questdlg('some target sequences appear in the reference' , ...
+                          'target in reference', 'filter from ref', ...
+                          'skip target', 'ignore', 'filter from ref');
+        prompt_user = false;
+    end
+
+    switch handles.filt_action
+        case 'filter from ref'
+            % find which ref to remove
+            [~, iSA] = longest_prefix(ctarg, handles.SA, cref);
+            iref = handles.SA(iSA, 2);  % seq index
+            handles.SA(handles.SA(:, 2) == iref, 3) = 0; 
+            % set freq to 0 to remove from pos-spec cARS/cMap reference.
+            % this is more efficient than copy/slicing and is required to
+            % keep the sorted indices in columns 5-6 stable.
+            handles.filt_msg = 'targets filtered from reference:';
+        case 'skip target'
+            handles.target_seq(1) = [];
+            handles.default_seq(1) = [];
+            handles.target_name(1) = [];
+            handles.chimera_regions(1) = [];
+            handles.codon_regions(1) = [];
+            handles.default_regions(1) = [];
+            handles.filt_msg = 'targets skipped:';
+            return
+        case 'ignore'
+            handles.filt_msg = 'targets ignored:';
+            return
+        otherwise
+            error('too many cooks!');
+    end
+end
+
+
+function w = CUB2weights(CUB)
+    aa_list = fieldnames(CUB);
+    n = length(aa_list);
+    codon_list = cell(n, 1);
+    w = cell(n, 1);
+    for aa = 1:n
+        codon_list{aa} = CUB.(aa_list{aa}).Codon;
+        w{aa} = CUB.(aa_list{aa}).Freq;
+    end
+    codon_list = cellcat(codon_list, 2);
+    w = cellcat(w, 2);
+    [~, isort] = sort(codon_list);
+    w = w(isort)';
 
 % --- End of my functions --- %
 
@@ -436,9 +610,15 @@ handles.chimera_regions = {zeros(0, 2)};
 handles.codon_regions = {zeros(0, 2)};
 handles.default_regions = {zeros(0, 2)};
 
-handles.winParams = struct('size', 70, 'center', 35, 'by_start', 1, 'by_stop', 1, 'truncate_seq', 1);
+handles.during_ars = false;
+handles.during_map = false;
 
-cmap_logo(handles.axLogo);
+handles.winParams = struct('size', 40, 'center', 0, ...
+                           'by_start', 1, 'by_stop', 1, ...
+                           'truncate_seq', 0, ...
+                           'max_len', 40, 'max_pos', 0.5);
+
+logo(handles.axLogo);
 
 update_figure(hObject, handles);
 
@@ -496,7 +676,7 @@ if err == 2
 elseif err == 1
     decision = questdlg('new region overlaps with an existing Chimera region' , ...
                         'region overlap', 'merge', 'cancel', 'cancel');
-    if strcmp(decision, 'cancel')
+    if ~strcmp(decision, 'merge')
         return
     end
 end
@@ -511,7 +691,7 @@ if err
         case 'keep chimera'
             handles.codon_regions{1} = trunc_old;
         otherwise
-            error('too many cooks!');
+            return
     end
 end
 
@@ -520,9 +700,9 @@ end
 update_figure(hObject, handles);
 
 
-% --- Executes on button press in butRun.
-function butRun_Callback(hObject, eventdata, handles)
-% hObject    handle to butRun (see GCBO)
+% --- Executes on button press in butMap.
+function butMap_Callback(hObject, eventdata, handles)
+% hObject    handle to butMap (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
@@ -548,11 +728,18 @@ if handles.optSourceRef.Value
 end
 tic;
 
+handles.during_map = true;
+handles = update_figure(hObject, handles);
+
 ntarg = length(handles.target_seq);
+target_filter = {};
+homolog_filter = {};
+target_error = {};
+cmap_names = cellfun(@(x) get_i0(strsplit(strrep(x, ',', ';'), ' '), 0), handles.target_name);
 for t = 1:ntarg
     % 1. codons optimization
     do_codon = ~isempty(handles.codon_regions{1});
-    handles.statRun.String = sprintf('%d: codons optim', t); drawnow;
+    handles.statMap.String = sprintf('%d: codons optim', t); drawnow;
 
     if do_codon && handles.optSourceRef.Value
         if isempty(handles.CUB)
@@ -562,6 +749,8 @@ for t = 1:ntarg
         end
     elseif do_codon && handles.optSourceTable.Value && isempty(handles.CUB)
         errordlg('missing a codon table', 'codon optimization', 'modal');
+        handles.during_map = false;
+        update_figure(hObject, handles);
         return
     elseif do_codon
         codon_seq = maximize_CUB(handles.target_seq{1}, handles.CUB);
@@ -571,31 +760,68 @@ for t = 1:ntarg
 
     % 2. chimera optimization
     do_chimera = ~isempty(handles.chimera_regions{1});
-    if do_chimera && ~handles.SA_exist
-        handles.statRun.String = sprintf('%d: building index', t); drawnow;
-
-        handles.reference_aa = nt2aa(handles.reference_seq, 'AlternativeStartCodons', false);  % here false is good
-        lens = cellfun(@length, handles.reference_aa);
+    if do_chimera && ~(handles.SA_exist && strcmpi(handles.SA_type, 'AA'))
+        handles.statMap.String = sprintf('%d: building index', t); drawnow;
         handles.SA = build_suffix_array(handles.reference_aa, false);
-%         handles.SA(:, 3) = handles.SA(:, 1) - lens(handles.SA(:, 2)) - 1;  % equals -1 at end of seq
+        handles.SA_type = 'AA';
         handles.SA_exist = true;
     end
-    handles.statRun.String = sprintf('%d: chimera optim', t); drawnow;
+    handles.statMap.String = sprintf('%d: chimera optim', t); drawnow;
 
-    if do_chimera && (handles.winParams.size) == 0
+    % check if target is already in reference
+    if handles.default_exist
+        % re-translating with alternative=False to match the reference
+        [filtered, handles] = filter_target_from_ref(handles, ...
+                                                nt2aa(handles.default_seq{1}, 'AlternativeStartCodons', false), ...
+                                                handles.reference_aa);
+    else
+        [filtered, handles] = filter_target_from_ref(handles, handles.target_seq{1}, handles.reference_aa);
+    end
+    if filtered
+        switch handles.filt_action
+            case 'filter from ref'
+                target_filter{end+1} = sprintf('%05d: %s (filtered %d)', t, cmap_names{t}, filtered);
+                handles.statMap.String = sprintf('%d: chimera (filtered %d)', t, filtered); drawnow;
+            case 'skip target'
+                target_filter{end+1} = sprintf('%05d: %s', t, cmap_names{t});
+                handles = update_figure(hObject, handles);
+                continue
+        end
+    end
+
+    if do_chimera && (handles.winParams.size == 0)
         % not position specific
-        [chimera_seq, mblocks] = calc_cmap(handles.target_seq{1}, handles.SA, ...
-            handles.reference_aa, handles.reference_seq);
-    elseif do_chimera
-        [chimera_seq, mblocks] = calc_cmap_posspec(handles.target_seq{1}, handles.SA, ...
+        [chimera_seq, mblocks, err, homologs] = calc_cmap(handles.target_seq{1}, handles.SA, ...
             handles.reference_aa, handles.reference_seq, ...
-            handles.winParams);
+            handles.winParams.max_len, handles.winParams.max_pos);
+    elseif do_chimera
+        [chimera_seq, mblocks, err, homologs] = calc_cmap_posspec(handles.target_seq{1}, handles.SA, ...
+            handles.reference_aa, handles.reference_seq, ...
+            handles.winParams, ...
+            handles.winParams.max_len, handles.winParams.max_pos);
     else
         chimera_seq = '';
     end
 
+    if homologs
+        homolog_filter{end+1} = sprintf('%05d: %s (filtered %d)', t, cmap_names{t}, homologs);
+    end
+    if any(err)
+        err_string = sprintf('%05d: %s', t, cmap_names{t});
+        if err(1)
+            err_string = sprintf('%s [empty block]', err_string);
+        end
+        if err(2)
+            err_string = sprintf('%s [empty window]', err_string);
+        end
+        if err(3)
+            err_string = sprintf('%s [peptide error]', err_string);
+        end
+        target_error{end+1} = err_string;
+    end
+
     % 3. complete construct from regions
-    handles.statRun.String = sprintf('%d: combining regions', t); drawnow;
+    handles.statMap.String = sprintf('%d: combining regions', t); drawnow;
 
     codon_region = region2set(handles.codon_regions{1});
     chim_region = region2set(handles.chimera_regions{1});
@@ -603,20 +829,22 @@ for t = 1:ntarg
     assert(isempty(intersect(codon_region, chim_region)) && ...
         isempty(intersect(codon_region, def_region)) && ...
         isempty(intersect(chim_region, def_region)), 'overlapping regions')
-    
+
     seq_bank = {codon_seq, chimera_seq, handles.default_seq{1}};
     seq_source = [];
     seq_source(codon_region) = 1;
     seq_source(chim_region) = 2;
     seq_source(def_region) = 3;
     final_seq = cellcat(arrayfun(@(x, y) {seq_bank{x}(3*(y-1)+1:3*y)}, seq_source, 1:length(seq_source)), 2);
-    assert(strcmp(nt2aa(final_seq, 'AlternativeStartCodons', true), handles.target_seq{1}), 'final seq error');
+    if ~do_chimera || ~any(err)
+        assert(strcmp(nt2aa(final_seq, 'AlternativeStartCodons', true), handles.target_seq{1}), 'final seq error');
+    end
     % NOTE: as long as we allow alternative starts in [default_seq], so do
     %       we need to allow it here
 
     % generate a block table
     if ~profiling_run
-        handles.statRun.String = sprintf('%d: saving', t); drawnow;
+        handles.statMap.String = sprintf('%d: saving', t); drawnow;
         blocks = table(0, 0, {'init'}, {''}, 0, {''}, 'VariableNames', ...
             {'pos_s', 'pos_e', 'type', 'gene', 'gene_loc', 'block'});
         if do_chimera
@@ -633,7 +861,9 @@ for t = 1:ntarg
                 end
             end
             mblocks(erase, :) = [];
-            mblocks.gene = cellfun(@(x) handles.reference_name(x), mblocks.gene);
+            valid = ~cellfun(@isnan, mblocks.gene);
+            mblocks.gene(valid) = cellfun(@(x) get_i0(strsplit(strrep(handles.reference_name{x}, ',', ';'), ' '), 0), mblocks.gene(valid));
+            mblocks.gene(~valid) = {'NA'};
             mblocks.type = repelem({'cMap'}, height(mblocks), 1);
             blocks = outerjoin(blocks, mblocks, 'MergeKeys', true);
         end
@@ -655,10 +885,10 @@ for t = 1:ntarg
             blocks = outerjoin(blocks, dblocks, 'MergeKeys', true);
         end
         blocks(1, :) = [];
-        
-        writetable(blocks, sprintf('%s_%s.csv', outfile, handles.target_name{1}))
+
+        writetable(blocks, sprintf('%s_%s.csv', outfile, cmap_names{t}))
         fastawrite(outfasta, ...
-            sprintf('%s optimized by cMapApp', handles.target_name{1}), final_seq);
+            sprintf('%s optimized by ChimeraMap', handles.target_name{1}), final_seq);
     end
 
     handles.target_seq(1) = [];
@@ -675,8 +905,29 @@ end
 toc;
 % msgbox(sprintf('%d sequences optimized.', ntarg), 'optimization', 'modal');
 
-handles.statRun.String = 'done'; drawnow;
+if isfield(handles, 'filt_action')
+    handles = rmfield(handles, 'filt_action');
+end
+handles.during_map = false;
 update_figure(hObject, handles);
+
+if ~isempty(target_filter)
+    listdlg('Name', 'target in reference', 'PromptString', handles.filt_msg, ...
+            'ListString', target_filter, 'SelectionMode', 'single', ...
+            'ListSize', [240, 300], 'CancelString', 'Cool');
+end
+if ~isempty(homolog_filter)
+    listdlg('Name', 'homologs in reference', 'PromptString', ...
+            'homologs suspected for the following targets:', ...
+            'ListString', homolog_filter, 'SelectionMode', 'single', ...
+            'ListSize', [240, 300], 'CancelString', 'Cool');
+end
+if ~isempty(target_error)
+    listdlg('Name', 'cMap errors', 'PromptString', ...
+            'the following errors occured during optimization:', ...
+            'ListString', target_error, 'SelectionMode', 'single', ...
+            'ListSize', [240, 300], 'CancelString', 'Bummer');
+end
 
 
 % --- Executes on button press in butTarget.
@@ -684,15 +935,21 @@ function butTarget_Callback(hObject, eventdata, handles)
 % hObject    handle to butTarget (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-[fname, dirname] = uigetfile({'*.fa;*.fasta', 'fasta file'}, 'select a protein sequence file');
+[fname, dirname] = uigetfile({'*.fa;*.fasta', 'fasta file'}, 'select a sequence file');
 if fname == 0
     return
 end
-seqs = fastaread(fullfile(dirname, fname));
+try
+    seqs = fastaread(fullfile(dirname, fname));
+catch
+    errordlg('invalid file: %s', fullfile(dirname, fname));
+end
 
 if length(seqs) > 1
-    [ind, ok] = listdlg('ListString', {seqs.Header}, 'Name', 'select a protein', ...
+    ls = arrayfun(@(x) {sprintf('%05d: %s', x, seqs(x).Header)}, 1:length(seqs));
+    [ind, ok] = listdlg('ListString', ls, 'Name', 'select a target sequence', ...
                         'ListSize', [450, 300], 'SelectionMode', 'multiple');
+    clear('ls');
     if ok == 0
         return
     end
@@ -701,11 +958,11 @@ end
 n_seq = length(seqs);
 
 aa_alphabet = '*ACDEFGHIKLMNPQRSTVWY';
+nt_alphabet = 'ACGTU';
 for s = 1:n_seq
     valid_aa = ismember(upper(seqs(s).Sequence), aa_alphabet);
-    nt_alphabet = 'ACGTU';
     valid_nt = ismember(upper(seqs(s).Sequence), nt_alphabet);
-    
+
     if handles.optAA.Value && ~all(valid_aa)
         errordlg(sprintf('protein %s sequence contains illegal AA chars ("%s"). \nexpecting an amino acid sequence.', ...
             seqs(s).Header, unique(seqs(s).Sequence(~valid_aa))), 'target seq', 'modal');
@@ -737,10 +994,13 @@ end
 handles.target_seq = {};
 handles.default_seq = {};
 handles.target_name = {};
-ignored_len = {};
-ignored_stop = {};
+handles.target_NT_alpha = '';  % for alphabet assertion
+handles.target_AA_alpha = '';
+valid_len = [];
+discard_stop = {};
 added_stop = {};
 for s = 1:n_seq
+    seqs(s).Sequence = upper(seqs(s).Sequence);
     switch seq_type
         case 'AA'
             handles.optAA.Value = 1;
@@ -749,70 +1009,95 @@ for s = 1:n_seq
                 if ~exist('stop_decis', 'var')
                     stop_decis = questdlg('AA sequence is missing a STOP codon.', ...
                                           sprintf('%s STOP codon', seqs(s).Header), ...
-                                          'add STOP', 'ignore', 'add STOP');
+                                          'add STOP', 'discard', 'ignore', 'add STOP');
                 end
                 if strcmp(stop_decis, 'add STOP')
                     seqs(s).Sequence(end+1) = '*';
                     added_stop{end+1} = seqs(s).Header;
-                else
-                    ignored_stop{end+1} = seqs(s).Header;
+                elseif strcmp(stop_decis, 'discard')
+                    discard_stop{end+1} = seqs(s).Header;
                     continue
                 end
             end
-            handles.target_seq{end+1} = upper(seqs(s).Sequence);
+            handles.target_seq{end+1} = seqs(s).Sequence;
             handles.default_seq{end+1} = '';
             handles.target_name{end+1} = seqs(s).Header;
             handles.default_exist = false;
+            valid_len = [valid_len; true];
         case 'NT'
-            if mod(length(seqs(s).Sequence), 3) > 0
-                ignored_len{end+1} = seqs(s).Header;
-                continue
-            end
+            seqs(s).Sequence = strrep(seqs(s).Sequence, 'U', 'T');
             if nt2aa(seqs(s).Sequence(end-2:end)) ~= '*'
                 if ~exist('stop_decis', 'var')
                     stop_decis = questdlg('NT sequence is missing a STOP codon.', ...
                                           sprintf('%s stop codon', seqs(s).Header), ...
-                                          'add STOP', 'ignore', 'add STOP');
+                                          'add STOP', 'discard', 'ignore', 'add STOP');
                 end
                 if strcmp(stop_decis, 'add STOP')
-                    seqs(s).Sequence(end+1:end+3) = aa2nt('*');
+                    seqs(s).Sequence(end+1:end+3) = aa2nt('*');  % random STOP
                     added_stop{end+1} = seqs(s).Header;
-                else
-                    ignored_stop{end+1} = seqs(s).Header;
+                elseif strcmp(stop_decis, 'discard')
+                    discard_stop{end+1} = seqs(s).Header;
                     continue
                 end
             end
             handles.optNT.Value = 1;
             handles.optAA.Value = 0;
-            handles.default_seq{end+1} = upper(seqs(s).Sequence);
+            handles.default_seq{end+1} = seqs(s).Sequence;
             handles.target_seq{end+1} = nt2aa(handles.default_seq{end}, ...
                                               'AlternativeStartCodons', true);
             % NOTE: here we allow alternative starts so that the given
             %       target is translated correctly.
             handles.target_name{end+1} = seqs(s).Header;
             handles.default_exist = true;
+            valid_len = [valid_len; mod(length(seqs(s).Sequence), 3) == 0];
         otherwise
             error('too many cooks!');
     end
+    handles.target_AA_alpha = union(handles.target_AA_alpha, handles.target_seq{end});
+    handles.target_NT_alpha = union(handles.target_NT_alpha, handles.default_seq{end});
 end
 
-if ~isempty(ignored_len)
-    warndlg(sprintf('%d targets not divisible by 3 (ignored): \n%s', ...
-                    length(ignored_len), strjoin(ignored_len, '\n')), ...
-            'target protein length', 'modal');
+if ~all(valid_len)
+    [sel, decision] = listdlg('ListString', handles.target_name(~valid_len), ...
+                              'Name', 'invalid length', 'ListSize', [450, 300], ...
+                              'InitialValue', 1:sum(~valid_len), ...
+                              'OKString', 'discard selected', 'CancelString', 'ignore warning', ...
+                              'PromptString', 'the following seqs have lengths not divisible by 3.');
+    if decision == 1  % 'discard selected'
+        invalid_len = find(~valid_len);
+        handles.default_seq(invalid_len(sel)) = [];
+        handles.target_seq(invalid_len(sel)) = [];
+        handles.target_name(invalid_len(sel)) = [];
+    end
 end
-if ~isempty(ignored_stop)
-    warndlg(sprintf('%d targets missing a STOP codon (ignored): \n%s', ...
-                    length(ignored_stop), strjoin(ignored_stop, '\n')), ...
-            'target protein STOP', 'modal');
+if ~isempty(discard_stop)
+    listdlg('PromptString', sprintf('%d targets missing a STOP codon (discarded):', ...
+                                    length(discard_stop)), ...
+            'ListString', discard_stop, 'Name', 'target protein STOP', ...
+            'ListSize', [240, 300], 'SelectionMode', 'single', 'CancelString', 'Cool');
 end
 if ~isempty(added_stop)
-    warndlg(sprintf('%d targets missing a STOP codon (added): \n%s', ...
-                    length(added_stop), strjoin(added_stop, '\n')), ...
-            'target protein STOP', 'modal');
+    listdlg('PromptString', sprintf('%d targets missing a STOP codon (added): \n%s', ...
+                                    length(added_stop)), ...
+            'ListString', added_stop ,'Name', 'target protein STOP', ...
+            'ListSize', [240, 300], 'SelectionMode', 'single', 'CancelString', 'Cool');
+end
+if handles.reference_exist
+    repres = ismember(handles.target_AA_alpha, handles.reference_AA_alpha);
+    if ~all(repres)
+        warndlg(sprintf('%d letters in the target AA alphabet are missing from the reference alphabet: \n%s', ...
+                        sum(~repres), handles.target_AA_alpha(~repres)), 'AA alphabet assertion');
+    end
+    if strcmpi(seq_type, 'NT') && strcmpi(handles.reference_type, 'NT')
+        repres = ismember(handles.target_NT_alpha, handles.reference_NT_alpha);
+        if ~all(repres)
+            warndlg(sprintf('%d letters in the target NT alphabet are missing from the reference alphabet: \n%s', ...
+                            sum(~repres), handles.target_NT_alpha(~repres)), 'NT alphabet assertion');
+        end
+    end
 end
 
-handles.seq_type = seq_type;
+handles.target_type = seq_type;
 handles.target_file = fname;
 handles.target_exist = true;
 if n_seq > 1
@@ -849,26 +1134,45 @@ function butReference_Callback(hObject, eventdata, handles)
 if fname == 0
     return
 end
-seqs = fastaread(fullfile(dirname, fname));
+
+handles.statMap.String = 'loading reference'; drawnow;
+try
+    seqs = fastaread(fullfile(dirname, fname));
+catch
+    errordlg('invalid file: %s', fullfile(dirname, fname));
+end
 
 nt_alphabet = 'ACGTU';
+aa_alphabet = '*ACDEFGHIKLMNPQRSTVWY';
+if handles.optRefNT.Value
+    alphabet = nt_alphabet;
+elseif handles.optRefAA.Value
+    alphabet = aa_alphabet;
+else
+    error('too many cooks!');
+end
 valid_seq = true(length(seqs), 1);
 valid_len = true(length(seqs), 1);
 for i = 1:length(seqs)
-    valid_seq(i) = all(ismember(upper(seqs(i).Sequence), nt_alphabet));
+    seqs(i).Sequence = upper(seqs(i).Sequence);
+    valid_seq(i) = all(ismember(seqs(i).Sequence, alphabet));
     valid_len(i) = mod(length(seqs(i).Sequence), 3) == 0;
-    seqs(i).Sequence = strrep(upper(seqs(i).Sequence), 'U', 'T');
+    if handles.optRefNT.Value && valid_seq(i)
+        seqs(i).Sequence = strrep(seqs(i).Sequence, 'U', 'T');
+        seqs(i).aa_seq = nt2aa(seqs(i).Sequence, 'AlternativeStartCodons', false);  % here false is good
+        % we will need the AA seq soon for alphabet assertion
+    end
 end
 
 if ~all(valid_seq)
     listdlg('ListString', {seqs(~valid_seq).Header}, 'Name', 'invalid seqs', ...
-            'ListSize', [450, 300], ...
-            'PromptString', 'the following seqs contain invalid chars and will be discarded.');
+            'ListSize', [450, 300], 'CancelString', 'Cool', ...
+            'PromptString', 'the following seqs contain invalid letters and will be discarded.');
 end
 seqs = seqs(valid_seq);
 valid_len = valid_len(valid_seq);
 
-if ~all(valid_len)
+if ~all(valid_len) && handles.optRefNT.Value
     [sel, decision] = listdlg('ListString', {seqs(~valid_len).Header}, ...
                               'Name', 'invalid length', 'ListSize', [450, 300], ...
                               'InitialValue', 1:sum(~valid_len), ...
@@ -880,13 +1184,50 @@ if ~all(valid_len)
     end
 end
 
-handles.reference_seq = {seqs.Sequence}';
+handles.reference_NT_alpha = '';
+handles.reference_AA_alpha = '';
+for i = 1:length(seqs)
+    if handles.optRefNT.Value
+        handles.reference_NT_alpha = union(handles.reference_NT_alpha, seqs(i).Sequence);
+        handles.reference_AA_alpha = union(handles.reference_AA_alpha, seqs(i).aa_seq);
+    else
+        handles.reference_AA_alpha = union(handles.reference_AA_alpha, seqs(i).Sequence);
+    end
+end
+if handles.target_exist
+    repres = ismember(handles.target_AA_alpha, handles.reference_AA_alpha);
+    if ~all(repres)
+        errordlg(sprintf('%d letters in the target AA alphabet are missing from the reference alphabet: \n%s', ...
+                         sum(~repres), handles.target_AA_alpha(~repres)), 'AA alphabet assertion');
+        return
+    end
+    if strcmpi(handles.target_type, 'NT') && handles.optRefNT.Value
+        repres = ismember(handles.target_NT_alpha, handles.reference_NT_alpha);
+        if ~all(repres)
+            errordlg(sprintf('%d letters in the target NT alphabet are missing from the reference alphabet: \n%s', ...
+                             sum(~repres), handles.target_NT_alpha(~repres)), 'NT alphabet assertion');
+            return
+        end
+    end
+end
+
+if handles.optRefNT.Value
+    handles.reference_type = 'NT';
+    handles.reference_seq = {seqs.Sequence}';
+    handles.reference_aa = {seqs.aa_seq}';
+    n_seq = length(handles.reference_seq);
+else
+    handles.reference_type = 'AA';
+    handles.reference_seq = {};
+    handles.reference_aa = {seqs.Sequence}';
+    n_seq = length(handles.reference_aa);
+end
 handles.reference_name = {seqs.Header}';
 handles.reference_file = fname;
-handles.fileReference.String = sprintf('%s: %d seqs', handles.reference_file, length(handles.reference_seq));
+handles.fileReference.String = sprintf('%s: [%d %s seqs]', handles.reference_file, n_seq, handles.reference_type);
 handles.SA = zeros(0, 3);
 
-if ~isempty(handles.reference_seq)
+if ~isempty(handles.reference_seq) || ~isempty(handles.reference_aa)
     handles.reference_exist = true;
 else
     handles.reference_exist = false;
@@ -969,7 +1310,7 @@ if err == 2
 elseif err == 1
     decision = questdlg('new region overlaps with an existing codon region' , ...
                         'region overlap', 'merge', 'cancel', 'cancel');
-    if strcmp(decision, 'cancel')
+    if ~strcmp(decision, 'merge')
         return
     end
 end
@@ -984,7 +1325,7 @@ if err
         case 'keep codon'
             handles.chimera_regions{1} = trunc_old;
         otherwise
-            error('too many cooks!');
+            return
     end
 end
 
@@ -1022,28 +1363,6 @@ handles.winParams = winParams(handles.winParams);
 update_figure(hObject, handles);
 
 
-% --- Executes on key press with focus on fileTarget and none of its controls.
-function fileTarget_KeyPressFcn(hObject, eventdata, handles)
-% hObject    handle to fileTarget (see GCBO)
-% eventdata  structure with the following fields (see MATLAB.UI.CONTROL.UICONTROL)
-%	Key: name of the key that was pressed, in lower case
-%	Character: character interpretation of the key(s) that was pressed
-%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
-% handles    structure with handles and user data (see GUIDATA)
-if handles.target_exist
-    n_seq = length(handles.target_seq);
-    if n_seq > 1
-        handles.fileTarget.String = sprintf('%s: [%d %s seqs]', handles.target_file, ...
-            n_seq, handles.seq_type);
-    else
-        handles.fileTarget.String = sprintf('%s: [%s seq] %s', handles.target_file, ...
-            handles.seq_type, handles.target_name{1});
-    end
-else
-    handles.fileTarget.String = '';
-end
-
-
 % --- Executes on button press in butRegions.
 function butRegions_Callback(hObject, eventdata, handles)
 % hObject    handle to butRegions (see GCBO)
@@ -1053,45 +1372,43 @@ function butRegions_Callback(hObject, eventdata, handles)
 if fname == 0
     return
 end
-regions = fastaread(fullfile(dirname, fname));
+try
+    regions = fastaread(fullfile(dirname, fname));
+catch
+    errordlg('invalid file: %s', fullfile(dirname, fname));
+end
 
 [target_in_file, itarg] = ismember(handles.target_name, {regions.Header});
 if ~all(target_in_file)
-    if sum(~target_in_file) < 10
-        str_targets = strjoin(handles.target_name(~target_in_file), '\n');
-    else
-        str_targets = strjoin([handles.target_name(find(~target_in_file, 9)), {'...'}], '\n');
-    end
-    errordlg(sprintf('%d targets missing from file: \n%s', sum(~target_in_file), ...
-                     str_targets), ...
-             'regions file', 'modal');
+    str_targets = cellfun(@(x) get_i0(strsplit(strrep(x, ',', ';'), ' '), 0), ...
+                          handles.target_name(~target_in_file));
+    listdlg('Name', 'regions file error', 'PromptString', ...
+            sprintf('%d targets missing from file:', sum(~target_in_file)), ...
+            'ListString', str_targets, 'SelectionMode', 'single', ...
+            'ListSize', [240, 300], 'CancelString', 'Shame');
     return
 end
 
 lens_OK = cellfun(@length, {regions(itarg(itarg>0)).Sequence}) == ...
           cellfun(@length, handles.target_seq);
 if ~all(lens_OK)
-    if sum(~lens_OK) < 10
-        str_targets = strjoin(handles.target_name(~lens_OK), '\n');
-    else
-        str_targets = strjoin([handles.target_name(find(~lens_OK, 9)), {'...'}], '\n');
-    end
-    errordlg(sprintf('%d targets with wrong length: \n%s \nregion definitions must be equal in length to targets.', ...
-                     sum(~lens_OK), str_targets), ...
-             'regions file', 'modal');
+    str_targets = cellfun(@(x) get_i0(strsplit(strrep(x, ',', ';'), ' '), 0), ...
+                          handles.target_name(~lens_OK));
+    listdlg('Name', 'regions file error', 'PromptString', ...
+            sprintf('%d targets with wrong length', sum(~lens_OK)), ...
+            'ListString', str_targets, 'SelectionMode', 'single', ...
+            'ListSize', [240, 300], 'CancelString', 'Shame');
     return
 end
 
-chars_OK = cellfun(@(x) all(ismember(upper(x), 'MCD')), {regions(itarg(itarg>0)).Sequence});
+chars_OK = cellfun(@(x) all(ismember(upper(x), 'BCD')), {regions(itarg(itarg>0)).Sequence});
 if ~all(chars_OK)
-    if sum(~chars_OK) < 10
-        str_targets = strjoin(handles.target_name(~chars_OK), '\n');
-    else
-        str_targets = strjoin([handles.target_name(find(~chars_OK, 9)), {'...'}], '\n');
-    end
-    errordlg(sprintf('%d bad region definitions: \n%s \nregion definitions should comprise of the chars \n''M'' (cMap), ''C'' (codon), or ''D'' (default).', ...
-                     sum(~chars_OK), str_targets), ...
-             'regions file', 'modal');
+    str_targets = cellfun(@(x) get_i0(strsplit(strrep(x, ',', ';'), ' '), 0), ...
+                          handles.target_name(~chars_OK));
+    listdlg('Name', 'regions file error', 'PromptString', ...
+            sprintf('%d bad region definitions. consult the user guide.', sum(~chars_OK)), ...
+            'ListString', str_targets, 'SelectionMode', 'single', ...
+            'ListSize', [240, 300], 'CancelString', 'Shame');
     return
 end
 
@@ -1102,7 +1419,7 @@ for i = 1:length(handles.target_seq)
     if ~target_in_file(i)
         continue
     end
-    handles.chimera_regions{i} = set2region(find(upper(regions(itarg(i)).Sequence) == 'M'));
+    handles.chimera_regions{i} = set2region(find(upper(regions(itarg(i)).Sequence) == 'B'));
     handles.codon_regions{i} = set2region(find(upper(regions(itarg(i)).Sequence) == 'C'));
     handles.default_regions{i} = set2region(find(upper(regions(itarg(i)).Sequence) == 'D'));
 end
@@ -1130,7 +1447,7 @@ function optSourceTable_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of optSourceTable
-[fname, dirname] = uigetfile({'*.tsv;*.tab;*.*', 'tab separated values'}, 'select a codon score table');
+[fname, dirname] = uigetfile({'*.csv', 'comma separated values'}, 'select a codon score table');
 if fname == 0
     handles.optSourceRef.Value = 1;
     handles.optSourceTable.Value = 0;
@@ -1143,7 +1460,7 @@ file_OK = true;
 aa_list = fieldnames(aacount(''));
 fid = fopen(fullfile(dirname, fname));
 try
-    T = textscan(fid, '%s\t%f');
+    T = textscan(fid, '%s %f', 'Delimiter', ',');
     T{3} = nt2aa(T{1}, 'AlternativeStartCodons', false);
     aa_OK = ismember(aa_list, T{3});
 catch
@@ -1152,7 +1469,7 @@ end
 fclose(fid);
 
 if ~file_OK
-    errordlg('codon table format error. expecting a tab-separated file with 2 columns (and no header): [codon, score]', 'codon table', 'modal');
+    errordlg('codon table format error. expecting a comma-separated file with 2 columns (and no header): [codon, score]', 'codon table', 'modal');
     handles.optSourceRef.Value = 1;
     handles.optSourceTable.Value = 0;
     handles.CUB = [];
@@ -1206,30 +1523,206 @@ handles.optAA.Value = 1;
 handles.optNT.Value = 0;
 
 
-% --- Executes on key press with focus on fileReference and none of its controls.
-function fileReference_KeyPressFcn(hObject, eventdata, handles)
-% hObject    handle to fileReference (see GCBO)
-% eventdata  structure with the following fields (see MATLAB.UI.CONTROL.UICONTROL)
-%	Key: name of the key that was pressed, in lower case
-%	Character: character interpretation of the key(s) that was pressed
-%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% --- Executes on button press in butARS.
+function butARS_Callback(hObject, eventdata, handles)
+% hObject    handle to butARS (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-if handles.reference_exist
-    handles.fileReference.String = sprintf('%s: %d seqs', handles.reference_file, length(handles.reference_seq));
+
+% 0. select output file
+profiling_run = false;
+[fname, dirname] = uiputfile({'*.csv', 'comma separated values'}, 'select output file');
+if fname == 0
+    return
+elseif strcmp(fname, 'profiling.csv')
+    profiling_run = true;
+end
+[~, fname, extent] = fileparts(fname);
+if isempty(extent)
+    extent = '.csv';
+end
+outfile = fullfile(dirname, fname);
+outmain = strcat(outfile, extent);
+fmain = fopen(outmain, 'w');
+outreport = strcat(outfile, '_summary', extent);
+frep = fopen(outreport, 'w');
+tic;
+
+handles.during_ars = true;
+handles = update_figure(hObject, handles);
+handles.statARS.String = 'building index'; drawnow;
+win_params = handles.winParams;
+
+% select ARS alphabet
+if strcmpi(handles.reference_type, 'AA') || strcmpi(handles.target_type, 'AA')
+    ars_type = 'AA';
+else
+    % NT may be converted to AA
+    ars_type = {'NT', 'codon', 'AA'};
+end
+if iscell(ars_type)
+    ars_type = questdlg('select an alphabet for Chimera ARS', 'cARS', ...
+                        ars_type{:}, ars_type{1});
+end
+switch ars_type
+    case 'AA'
+        cars_ref = handles.reference_aa;
+        fprintf(frep, 'target,cARS_total_%s,cARS_region\n', ars_type);
+    case 'codon'
+        cars_ref = nt2codon(handles.reference_seq);
+        fprintf(frep, 'target,cARS_total_%s,cARS_region,codon_score\n', ars_type);
+    case 'NT'
+        cars_ref = handles.reference_seq;
+        win_params.size = 3 * win_params.size;  % aa2nt
+        win_params.center = 3 * win_params.center;
+        win_params.max_len = 3 * win_params.max_len;
+        fprintf(frep, 'target,cARS_total_%s,cARS_region,codon_score\n', ars_type);
+    otherwise
+        return
+end
+if handles.SA_exist && strcmpi(ars_type, handles.SA_type)
+    % pass
+else
+    handles.SA = build_suffix_array(cars_ref, false);
+    handles.SA_type = ars_type;
+    handles.SA_exist = true;
+end
+
+if isempty(handles.CUB)
+    [~, handles.CUB] = maximize_CUB('', handles.reference_seq);
+end
+w = CUB2weights(handles.CUB);
+
+ntarg = length(handles.target_seq);
+cars_score = nan(ntarg, 1);
+cars_score_reg = nan(ntarg, 1);
+codon_score = nan(ntarg, 1);
+cars_names = cellfun(@(x) get_i0(strsplit(strrep(x, ',', ';'), ' '), 0), handles.target_name);
+target_filter = {};
+homolog_filter = {};
+target_error = {};
+for t = 1:ntarg
+    % chimera ARS
+    do_chimera = ~isempty(handles.chimera_regions{1});
+    if ~do_chimera
+        error('no chimera region defined.');
+    end
+
+    handles.statARS.String = sprintf('target %d', t); drawnow;
+
+    chim_region = double(region2set(handles.chimera_regions{1}));
+    switch ars_type
+        case 'AA'
+            cars_targ = handles.target_seq{1};
+        case 'codon'
+            cars_targ = nt2codon(handles.default_seq{1});
+        case 'NT'
+            cars_targ = handles.default_seq{1};
+            chim_region = bsxfun(@minus, 3*chim_region, [2; 1; 0]);
+            chim_region = chim_region(:);
+        otherwise
+            error('too many cooks!');
+    end
+
+    % check if target is already in reference
+    [filtered, handles] = filter_target_from_ref(handles, cars_targ, cars_ref);
+    if filtered
+        switch handles.filt_action
+            case 'filter from ref'
+                target_filter{end+1} = sprintf('%05d: %s (filtered %d)', t, cars_names{t}, filtered);
+                handles.statARS.String = sprintf('target %d (filtered %d)', t, filtered); drawnow;
+            case 'skip target'
+                target_filter{end+1} = sprintf('%05d: %s', t, cars_names{t});
+                handles = update_figure(hObject, handles);
+                continue
+        end
+    end
+
+    if handles.winParams.size == 0
+        [cars_score(t), cars_vec, err, homologs] = calc_cars(cars_targ, ...
+            handles.SA, cars_ref, win_params.max_len, win_params.max_pos);
+    else
+        [cars_score(t), cars_vec, err, homologs] = calc_cars_posspec(cars_targ, ...
+            handles.SA, cars_ref, win_params, ...
+            win_params.max_len, win_params.max_pos);
+    end
+
+    if homologs
+        homolog_filter{end+1} = sprintf('%05d: %s (filtered %d)', t, cars_names{t}, homologs);
+    end
+    if any(err)
+        err_string = sprintf('%05d: %s', t, cars_names{t});
+        if err(1)
+            err_string = sprintf('%s [empty substring]', err_string);
+        end
+        if err(2)
+            err_string = sprintf('%s [empty window]', err_string);
+        end
+        target_error{end+1} = err_string;
+    end
+
+    cars_vec = cars_vec(chim_region);
+    cars_score_reg(t) = mean(cars_vec);
+    if handles.default_exist
+        codon_score(t) = calc_score_from_weights(w, handles.default_seq{1});
+    end
+
+    if ~profiling_run
+        cars_str = strjoin(arrayfun(@(x) {int2str(x)}, cars_vec), ',');
+        fprintf(fmain, sprintf('%s,%s\n', cars_names{t}, cars_str));
+        fprintf(frep, sprintf('%s,%.4f,%.4f,%.4f\n', cars_names{t}, cars_score(t), cars_score_reg(t), codon_score(t)));
+    end
+
+    handles.target_seq(1) = [];
+    handles.default_seq(1) = [];
+    handles.target_name(1) = [];
+    handles.chimera_regions(1) = [];
+    handles.codon_regions(1) = [];
+    handles.default_regions(1) = [];
+    handles = update_figure(hObject, handles);
+end
+fclose(fmain);
+fclose(frep);
+toc;
+
+if isfield(handles, 'filt_action')
+    handles = rmfield(handles, 'filt_action');
+end
+handles.during_ars = false;
+update_figure(hObject, handles);
+
+if ~isempty(target_filter)
+    listdlg('Name', 'target in reference', 'PromptString', handles.filt_msg, ...
+            'ListString', target_filter, 'SelectionMode', 'single', ...
+            'ListSize', [240, 300], 'CancelString', 'Cool');
+end
+if ~isempty(homolog_filter)
+    listdlg('Name', 'homologs in reference', 'PromptString', ...
+            'homologs suspected for the following targets:', ...
+            'ListString', homolog_filter, 'SelectionMode', 'single', ...
+            'ListSize', [240, 300], 'CancelString', 'Cool');
+end
+if ~isempty(target_error)
+    listdlg('Name', 'cARS errors', 'PromptString', ...
+            'the following errors occured during calculation:', ...
+            'ListString', target_error, 'SelectionMode', 'single', ...
+            'ListSize', [240, 300], 'CancelString', 'Bummer');
 end
 
 
-% --- If Enable == 'on', executes on mouse press in 5 pixel border.
-% --- Otherwise, executes on mouse press in 5 pixel border or over butCodonAddRegion.
-function butCodonAddRegion_ButtonDownFcn(hObject, eventdata, handles)
-% hObject    handle to butCodonAddRegion (see GCBO)
+% --- Executes on button press in optRefNT.
+function optRefNT_Callback(hObject, eventdata, handles)
+% hObject    handle to optRefNT (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+handles.optRefNT.Value = 1;
+handles.optRefAA.Value = 0;
 
 
-% --- If Enable == 'on', executes on mouse press in 5 pixel border.
-% --- Otherwise, executes on mouse press in 5 pixel border or over butCodonAddRegion.
-function butChimeraAddRegion_ButtonDownFcn(hObject, eventdata, handles)
-% hObject    handle to butCodonAddRegion (see GCBO)
+% --- Executes on button press in optRefAA.
+function optRefAA_Callback(hObject, eventdata, handles)
+% hObject    handle to optRefAA (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+handles.optRefAA.Value = 1;
+handles.optRefNT.Value = 0;

@@ -1,5 +1,12 @@
 function varargout = chimeraGUI_macOS(varargin)
 % CHIMERAGUI_MACOS MATLAB code for chimeraGUI_macOS.fig
+%
+%      ChimeraUGEM: Unsupervised Gene Expression Modeling
+%      Diament et al., 2018
+%
+%      Version 1.0
+%      Alon Diament / Tuller Lab, September 2018.
+%
 %      CHIMERAGUI_MACOS, by itself, creates a new CHIMERAGUI_MACOS or raises the existing
 %      singleton*.
 %
@@ -610,7 +617,7 @@ handles.winParams = struct('size', 40, 'center', 0, ...
                            'truncate_seq', 0, ...
                            'max_len', 40, 'max_pos', 0.5);
 
-cmap_logo(handles.axLogo);
+logo(handles.axLogo);
 
 update_figure(hObject, handles);
 

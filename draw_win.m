@@ -55,14 +55,14 @@ h_axes.XLim = [min(-1.5*win_size, win_x), max(1.5*win_size, win_x + win_size)];
 
 str_block = repmat('ACGTACGTACGT', 1, 10);
 for i = 1:100
-    htext = text(win_x + win_size/3, win_y/2, str_block(1:i), 'HorizontalAlignment', 'left', 'VerticalAlignment', 'middle', 'FontName', 'Courier New', 'FontWeight', 'bold', 'FontSize', 12);
+    htext = text(win_x + win_size/3, win_y/2, str_block(1:i), 'HorizontalAlignment', 'left', 'VerticalAlignment', 'middle', 'FontName', 'fixedwidth', 'FontWeight', 'bold', 'FontSize', 12);
     if truncate_seq && (htext.Extent(1) + htext.Extent(3) > win_x + win_size)
         delete(htext);
         break
     end
     delete(htext);
 end
-text(win_x + win_size/3, win_y/2, str_block(1:i-1), 'HorizontalAlignment', 'left', 'VerticalAlignment', 'middle', 'FontName', 'Courier New', 'FontWeight', 'bold', 'FontSize', 12);
+text(win_x + win_size/3, win_y/2, str_block(1:i-1), 'HorizontalAlignment', 'left', 'VerticalAlignment', 'middle', 'FontName', 'fixedwidth', 'FontWeight', 'bold', 'FontSize', 12);
 
 hold('off');
 
