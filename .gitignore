@@ -1,0 +1,8 @@
+.*
+.DS_Store
+_trash
+_backup
+*.pyc
+*.asv
+~*
+compile*
