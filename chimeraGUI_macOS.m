@@ -314,9 +314,11 @@ handles.optRefNT.ForegroundColor = [0, 0, 0];
 handles.optRefNT.FontWeight = 'normal';
 handles.statMap.String = '';
 handles.statARS.String = '';
+handles.butRegions.Enable = 'off';
 
 
 if (handles.target_exist || handles.default_exist) && ~isempty(handles.target_seq)
+    handles.butRegions.Enable = 'on';
 %     handles.statTarget.String = 'OK';
 else
     handles.statMap.String = 'target missing';
@@ -1370,41 +1372,35 @@ end
 
 [target_in_file, itarg] = ismember(handles.target_name, {regions.Header});
 if ~all(target_in_file)
-    if sum(~target_in_file) < 10
-        str_targets = strjoin(handles.target_name(~target_in_file), '\n');
-    else
-        str_targets = strjoin([handles.target_name(find(~target_in_file, 9)), {'...'}], '\n');
-    end
-    errordlg(sprintf('%d targets missing from file: \n%s', sum(~target_in_file), ...
-                     str_targets), ...
-             'regions file', 'modal');
+    str_targets = cellfun(@(x) get_i0(strsplit(strrep(x, ',', ';'), ' '), 0), ...
+                          handles.target_name(~target_in_file));
+    listdlg('Name', 'regions file error', 'PromptString', ...
+            sprintf('%d targets missing from file:', sum(~target_in_file)), ...
+            'ListString', str_targets, 'SelectionMode', 'single', ...
+            'ListSize', [240, 300], 'CancelString', 'Shame');
     return
 end
 
 lens_OK = cellfun(@length, {regions(itarg(itarg>0)).Sequence}) == ...
           cellfun(@length, handles.target_seq);
 if ~all(lens_OK)
-    if sum(~lens_OK) < 10
-        str_targets = strjoin(handles.target_name(~lens_OK), '\n');
-    else
-        str_targets = strjoin([handles.target_name(find(~lens_OK, 9)), {'...'}], '\n');
-    end
-    errordlg(sprintf('%d targets with wrong length: \n%s \nregion definitions must be equal in length to targets.', ...
-                     sum(~lens_OK), str_targets), ...
-             'regions file', 'modal');
+    str_targets = cellfun(@(x) get_i0(strsplit(strrep(x, ',', ';'), ' '), 0), ...
+                          handles.target_name(~lens_OK));
+    listdlg('Name', 'regions file error', 'PromptString', ...
+            sprintf('%d targets with wrong length', sum(~lens_OK)), ...
+            'ListString', str_targets, 'SelectionMode', 'single', ...
+            'ListSize', [240, 300], 'CancelString', 'Shame');
     return
 end
 
-chars_OK = cellfun(@(x) all(ismember(upper(x), 'MCD')), {regions(itarg(itarg>0)).Sequence});
+chars_OK = cellfun(@(x) all(ismember(upper(x), 'BCD')), {regions(itarg(itarg>0)).Sequence});
 if ~all(chars_OK)
-    if sum(~chars_OK) < 10
-        str_targets = strjoin(handles.target_name(~chars_OK), '\n');
-    else
-        str_targets = strjoin([handles.target_name(find(~chars_OK, 9)), {'...'}], '\n');
-    end
-    errordlg(sprintf('%d bad region definitions: \n%s \nregion definitions should comprise of the chars \n''M'' (cMap), ''C'' (codon), or ''D'' (default).', ...
-                     sum(~chars_OK), str_targets), ...
-             'regions file', 'modal');
+    str_targets = cellfun(@(x) get_i0(strsplit(strrep(x, ',', ';'), ' '), 0), ...
+                          handles.target_name(~chars_OK));
+    listdlg('Name', 'regions file error', 'PromptString', ...
+            sprintf('%d bad region definitions. consult the user guide.', sum(~chars_OK)), ...
+            'ListString', str_targets, 'SelectionMode', 'single', ...
+            'ListSize', [240, 300], 'CancelString', 'Shame');
     return
 end
 
@@ -1552,11 +1548,9 @@ win_params = handles.winParams;
 % select ARS alphabet
 if strcmpi(handles.reference_type, 'AA') || strcmpi(handles.target_type, 'AA')
     ars_type = 'AA';
-    fprintf(frep, 'target,cARS_total,cARS_region\n');
 else
     % NT may be converted to AA
     ars_type = {'NT', 'codon', 'AA'};
-    fprintf(frep, 'target,cARS_total,cARS_region,codon_score\n');
 end
 if iscell(ars_type)
     ars_type = questdlg('select an alphabet for Chimera ARS', 'cARS', ...
@@ -1565,13 +1559,16 @@ end
 switch ars_type
     case 'AA'
         cars_ref = handles.reference_aa;
+        fprintf(frep, 'target,cARS_total_%s,cARS_region\n', ars_type);
     case 'codon'
         cars_ref = nt2codon(handles.reference_seq);
+        fprintf(frep, 'target,cARS_total_%s,cARS_region,codon_score\n', ars_type);
     case 'NT'
         cars_ref = handles.reference_seq;
         win_params.size = 3 * win_params.size;  % aa2nt
         win_params.center = 3 * win_params.center;
         win_params.max_len = 3 * win_params.max_len;
+        fprintf(frep, 'target,cARS_total_%s,cARS_region,codon_score\n', ars_type);
     otherwise
         return
 end
