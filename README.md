@@ -11,10 +11,11 @@ Diament et al. **ChimeraUGEM: unsupervised gene expression modeling in any given
 
 The ChimeraUGEM binaries and source code are provided freely for non-commercial use.
 
-* [v1.0-macOS](bin/ChimeraUGEM-v1.0-macos.zip)
-* [v1.0-Linux](bin/ChimeraUGEM-v1.0-linux.zip)
-* [v1.0-Windows](bin/ChimeraUGEM-v1.0-win.zip)
-* [source (github)](http://github.com/alondmnt/chimera/)
+* [v1.0-macOS](https://github.com/alondmnt/chimera/releases/download/v1.0/ChimeraUGEM-v1.0-macOS.zip)
+* [v1.0-Linux](https://github.com/alondmnt/chimera/releases/download/v1.0/ChimeraUGEM-v1.0-linux.zip)
+* [v1.0-Windows](https://github.com/alondmnt/chimera/releases/download/v1.0/ChimeraUGEM-v1.0-win.zip)
+* [v1.0-source](https://github.com/alondmnt/chimera/archive/v1.0.zip)
+* [github repository](http://github.com/alondmnt/chimera/)
 
 ### Release notes
 
