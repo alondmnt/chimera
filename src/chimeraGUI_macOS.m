@@ -766,6 +766,8 @@ for t = 1:ntarg
         handles.SA_exist = true;
     end
     handles.statMap.String = sprintf('%d: chimera optim', t); drawnow;
+    homologs = false;
+    err = false;
 
     % check if target is already in reference
     if handles.default_exist
@@ -805,19 +807,6 @@ for t = 1:ntarg
     if homologs
         homolog_filter{end+1} = sprintf('%05d: %s (filtered %d)', t, cmap_names{t}, homologs);
     end
-    if any(err)
-        err_string = sprintf('%05d: %s', t, cmap_names{t});
-        if err(1)
-            err_string = sprintf('%s [empty block]', err_string);
-        end
-        if err(2)
-            err_string = sprintf('%s [empty window]', err_string);
-        end
-        if err(3)
-            err_string = sprintf('%s [peptide error]', err_string);
-        end
-        target_error{end+1} = err_string;
-    end
 
     % 3. complete construct from regions
     handles.statMap.String = sprintf('%d: combining regions', t); drawnow;
@@ -836,10 +825,34 @@ for t = 1:ntarg
     seq_source(def_region) = 3;
     final_seq = cellcat(arrayfun(@(x, y) {seq_bank{x}(3*(y-1)+1:3*y)}, seq_source, 1:length(seq_source)), 2);
     if ~do_chimera || ~any(err)
-        assert(strcmp(nt2aa(final_seq, 'AlternativeStartCodons', true), handles.target_seq{1}), 'final seq error');
+        if ~strcmp(nt2aa(final_seq(4:end), 'AlternativeStartCodons', false), ...
+                   handles.target_seq{1}(2:end))
+            err(3) = true;
+        end
+        if ~strcmp(nt2aa(final_seq(1:3), 'AlternativeStartCodons', true), ...
+                   handles.target_seq{1}(1))
+            err(4) = true;
+        end
     end
     % NOTE: as long as we allow alternative starts in [default_seq], so do
     %       we need to allow it here
+
+    if any(err)
+        err_string = sprintf('%05d: %s', t, cmap_names{t});
+        if err(1)
+            err_string = sprintf('%s [empty block]', err_string);
+        end
+        if err(2)
+            err_string = sprintf('%s [empty window]', err_string);
+        end
+        if err(3)
+            err_string = sprintf('%s [peptide error]', err_string);
+        end
+        if err(4)
+            err_string = sprintf('%s [start codon]', err_string);
+        end
+        target_error{end+1} = err_string;
+    end
 
     % generate a block table
     if ~profiling_run
@@ -887,7 +900,7 @@ for t = 1:ntarg
 
         writetable(blocks, sprintf('%s_%s.csv', outfile, cmap_names{t}))
         fastawrite(outfasta, ...
-            sprintf('%s optimized by ChimeraMap', handles.target_name{1}), final_seq);
+            sprintf('%s optimized by ChimeraUGEM', handles.target_name{1}), final_seq);
     end
 
     handles.target_seq(1) = [];
