@@ -3,21 +3,36 @@
 
 <img src="images/logo.png" style="width:30% !important;">
 
+This repo mirrors the [paper website](https://www.cs.tau.ac.il/~tamirtul/ChimeraUGEM/).
+
 ## How to cite
 
-Diament et al. **ChimeraUGEM: unsupervised gene expression modeling in any given organism**. pre-print, 2018.
+Diament et al. **ChimeraUGEM: unsupervised gene expression modeling in any given organism**. Bioinformatics, [btz080](https://doi.org/10.1093/bioinformatics/btz080), 2019.
+
+## License
+
+ChimeraUGEM binaries and source code are provided freely for non-commercial use.
 
 ## Download
 
-The ChimeraUGEM binaries and source code are provided freely for non-commercial use.
-
-* [v1.0-macOS](https://github.com/alondmnt/chimera/releases/download/v1.0/ChimeraUGEM-v1.0-macOS.zip)
-* [v1.0-Linux](https://github.com/alondmnt/chimera/releases/download/v1.0/ChimeraUGEM-v1.0-linux.zip)
-* [v1.0-Windows](https://github.com/alondmnt/chimera/releases/download/v1.0/ChimeraUGEM-v1.0-win.zip)
-* [v1.0-source](https://github.com/alondmnt/chimera/archive/v1.0.zip)
+* [v1.01-macOS](http://bit.ly/2SrkIfk)
+* [v1.01-Linux](http://bit.ly/2WyRDy5)
+* [v1.01-Windows](http://bit.ly/2WDI14Q)
+* [v1.01-source](http://bit.ly/2D6f20P)
 * [github repository](http://github.com/alondmnt/chimera/)
 
+### Installation
+
+1. Download and extract the zip file for the desired platform.
+2. Run the installation binary.
+3. MATLAB Runtime dependencies will be automatically installed when necessary.
+4. In linux: use `run_ChimeraUGEM.sh` with the location of MATLAB Runtime (which was shown during the installation) as an argument.
+
 ### Release notes
+
+#### Version 1.01
+
+* Improved error handling.
 
 #### Version 1.0
 
@@ -33,15 +48,15 @@ The ChimeraUGEM binaries and source code are provided freely for non-commercial 
 
 ## <a name="guide"></a> User guide
 
-ChimeraUGEM provides tools for the analysis of gene sequences (coding and non-coding), as well as the design of proetin coding sequences for optimized expression, based on the Chimera algorithms (Zur and Tuller, 2015; Diament et al., 2018) and codon usage optimization. The following tutorial will guide you step-by-step through the analysis and design pipelines. The application also provides online hints and status messages for the user. For an in-depth description of the methods (and some interesting results!) see the original paper.
+ChimeraUGEM provides tools for the analysis of gene sequences (coding and non-coding), as well as the design of protein coding sequences for optimized expression, based on the Chimera algorithms (Zur and Tuller, 2015; Diament et al., 2019) and codon usage optimization. The following tutorial will guide you step-by-step through the analysis and design pipelines. The application also provides online hints and status messages for the user. For an in-depth description of the methods (and some interesting results!) see the original paper.
 
 |Abbreviation   |Description    |Reference  |
 |---            |---            |---        |
 |CAI    |Codon Adaptation Index |(Sharp and Li, 1987)|
 |cARS   |ChimeraARS (part of the analysis pipeline)  |(Zur and Tuller, 2015)|
 |cMap   |ChimeraMap (part of the design pipeline)    |(Zur and Tuller, 2015)|
-|PScARS |Position-Specific cARS |(Diament et al., 2018)|
-|PScMap |Position-Specific cMap |(Diament et al., 2018)|
+|PScARS |Position-Specific cARS |(Diament et al., 2019)|
+|PScMap |Position-Specific cMap |(Diament et al., 2019)|
 
 [1. Target selection](#target)
 
@@ -169,3 +184,4 @@ The table reports that the first 10 codons were optimized based on codon frequen
 ### 6. <a name="batch"></a> Batch processing <a href="#guide">^</a>
 
 ChimeraUGEM supports batch processing of multiple target sequences. One may select any number of targets from the fasta file in [section 1](#target). The rest of the workflow is similar, with the exception that the regions editor is not enabled when multiple targets are given. If the analysis or design is based exclusively on Chimera methods, there is no need for further action. Otherwise, region definitions must be provided via a regions file as described in [section 3.2](#reg-file).
+
