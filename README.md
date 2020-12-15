@@ -1,7 +1,7 @@
 # ChimeraUGEM
 ### Unsupervised Gene Expression Modeling
 
-<img src="images/logo.png" style="width:30% !important;">
+<img src="images/logo.png" width="200">
 
 This repo mirrors the [paper website](https://www.cs.tau.ac.il/~tamirtul/ChimeraUGEM/).
 
@@ -69,6 +69,8 @@ ChimeraUGEM provides tools for the analysis of gene sequences (coding and non-co
 [5. Output files](#output)
 
 [6. Batch processing](#batch)
+
+[7. Programmatic API](#code)
 
 ### <a name="target"></a> 1. Target selection <a href="#guide">^</a>
 
@@ -185,3 +187,50 @@ The table reports that the first 10 codons were optimized based on codon frequen
 
 ChimeraUGEM supports batch processing of multiple target sequences. One may select any number of targets from the fasta file in [section 1](#target). The rest of the workflow is similar, with the exception that the regions editor is not enabled when multiple targets are given. If the analysis or design is based exclusively on Chimera methods, there is no need for further action. Otherwise, region definitions must be provided via a regions file as described in [section 3.2](#reg-file).
 
+### 7. <a name="code"></a> Programmatic API <a href="#guide">^</a>
+
+First, let's generate some random reference set of sequences, and a random query gene that will be used in the next two examples.
+
+```matlab
+ref_nt = arrayfun(@(x) {randseq(200*3)}, 1:50)';  % random 50 reference genes
+target_nt = randseq(200*3);  % random query gene
+```
+
+We may convert these NT sequences to AA or codon sequences using the following lines.
+
+```matlab
+% in codon coordinates (optional conversion)
+ref_cod = nt2codon(ref_nt);
+target_cod = nt2codon(target_nt);
+
+% in aa coordinates (required for the design pipeline)
+ref_aa = nt2aa(ref_nt, 'AlternativeStartCodon', false);
+target_aa = nt2aa(target_nt);
+```
+
+In addition, we need to select our Chimera window parameters, and our homolog filter parameters (the following is a good default setting for the codon/aa alphabet).
+
+```matlab
+win_params = struct('size', 40, 'center', 0, ...
+    'by_start', true, 'by_stop', true, 'truncate_seq', false);
+max_len = 40;
+max_pos = 0.5;
+```
+
+#### Analysis
+
+Running PScARS on a gene requires two steps:
+
+```matlab
+SA = build_suffix_array(ref_cod);  % run once for reference and store somewhere
+cars = calc_cars_posspec(target_cod, SA, ref_cod, win_params, max_len, max_pos);
+```
+
+#### Design
+
+Similarly, running PScMap requires two steps:
+
+```matlab
+SA = build_suffix_array(ref_aa);  % run once for reference and store somewhere
+target_optim_nt = calc_cmap_posspec(target_aa, SA, ref_aa, ref_nt, win_params, max_len, max_pos);
+```
